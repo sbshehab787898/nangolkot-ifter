@@ -634,6 +634,11 @@ function loadLocations() {
 function createLocationCard(loc) {
     const engagement = JSON.parse(localStorage.getItem('engaged_spots') || '{}');
     const myEngagement = engagement[loc.id] || {};
+    const now = Date.now();
+    const canVoteAgain = !myEngagement.voteTime || (now - myEngagement.voteTime >= 24 * 60 * 60 * 1000);
+
+    // UI highlight should only show if vote is still within the 24h cooldown
+    const activeVote = canVoteAgain ? null : myEngagement.voted;
 
     const div = document.createElement('div');
     div.className = 'location-card';
@@ -647,10 +652,10 @@ function createLocationCard(loc) {
         
         <div class="engagement-bar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:10px; background:rgba(255,255,255,0.03); border-radius:10px; border:1px solid var(--glass-border);">
             <div style="display:flex; gap:15px;">
-                <span onclick="handleSentiment(${loc.id}, 'like')" style="cursor:pointer; color:${myEngagement.voted === 'like' ? 'var(--accent-gold)' : 'var(--text-muted)'}; font-size:0.9rem;">
+                <span onclick="handleSentiment(${loc.id}, 'like')" style="cursor:pointer; color:${activeVote === 'like' ? 'var(--accent-gold)' : 'var(--text-muted)'}; font-size:0.9rem;">
                     <i class="fas fa-heart"></i> ${loc.likes}
                 </span>
-                <span onclick="handleSentiment(${loc.id}, 'dislike')" style="cursor:pointer; color:${myEngagement.voted === 'dislike' ? '#ef4444' : 'var(--text-muted)'}; font-size:0.9rem;">
+                <span onclick="handleSentiment(${loc.id}, 'dislike')" style="cursor:pointer; color:${activeVote === 'dislike' ? '#ef4444' : 'var(--text-muted)'}; font-size:0.9rem;">
                     <i class="fas fa-thumbs-down"></i> ${loc.dislikes}
                 </span>
             </div>
@@ -1153,9 +1158,13 @@ function submitReview(e) {
 function handleSentiment(id, type) {
     const engagement = JSON.parse(localStorage.getItem('engaged_spots') || '{}');
     const myEng = engagement[id] || {};
+    const now = Date.now();
 
-    if (myEng.voted) {
-        showToast("আপনি অলরেডি একবার ভোট দিয়েছেন।", "info");
+    // Check if user voted within the last 24 hours
+    if (myEng.voteTime && (now - myEng.voteTime < 24 * 60 * 60 * 1000)) {
+        const remainingMs = 24 * 60 * 60 * 1000 - (now - myEng.voteTime);
+        const remainingHours = Math.ceil(remainingMs / (1000 * 60 * 60));
+        showToast(`আপনি ইতিমধ্যে ভোট দিয়েছেন। আবার ভোট দিতে ${remainingHours} ঘণ্টা অপেক্ষা করুন।`, "info");
         return;
     }
 
@@ -1166,6 +1175,7 @@ function handleSentiment(id, type) {
     else loc.dislikes++;
 
     myEng.voted = type;
+    myEng.voteTime = now; // Store the current timestamp
     engagement[id] = myEng;
     localStorage.setItem('engaged_spots', JSON.stringify(engagement));
     localStorage.setItem('iftar_locations', JSON.stringify(locations));
