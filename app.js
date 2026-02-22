@@ -5,7 +5,18 @@ const GROUP_ID = "-1003876310720";
 // --- Supabase Config ---
 const SUPABASE_URL = "https://jbsjjhzcshjudeezywtr.supabase.co";
 const SUPABASE_KEY = "sb_publishable_WtOqT5OLD30iUnOVfPRK4w_zdqK09PT";
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let supabaseClient = null;
+try {
+    const lib = window.supabase || window.Supabase;
+    if (lib) {
+        supabaseClient = lib.createClient(SUPABASE_URL, SUPABASE_KEY);
+    } else {
+        console.error("Supabase library not found!");
+    }
+} catch (e) {
+    console.error("Supabase Init Error:", e);
+}
 
 let map, miniMap, userMarker, userLatLng;
 let prayerTimesData = null; // Will be set after NANGOLKOT_DEFAULT_TIMES is defined
@@ -518,20 +529,28 @@ function selectOrg(name) {
 }
 
 async function fetchLocationsFromSupabase() {
-    if (!supabaseClient) return;
+    if (!supabaseClient) {
+        console.warn("Supabase not initialized, skipping fetch.");
+        loadLocations();
+        return;
+    }
     try {
         const { data, error } = await supabaseClient
             .from('iftar_locations')
             .select('*')
             .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+            showToast("সার্ভার থেকে ডাটা লোড করতে সমস্যা হয়েছে।", "error");
+            throw error;
+        }
         if (data) {
             locations = data;
-            loadLocations(); // Re-render markers and list
+            console.log("Supabase Data Loaded:", locations.length, "spots");
+            loadLocations();
         }
     } catch (err) {
-        console.error("Supabase load error:", err);
+        console.error("Supabase Load Error Detail:", err.message || err);
         loadLocations();
     }
 }
@@ -752,6 +771,8 @@ function handleSubmission(e) {
         foodType: formData.get('foodType'),
         time: formData.get('time'),
         quantity: formData.get('quantity'),
+        phone: formData.get('phone'),
+        notes: formData.get('notes'),
         lat: parseFloat(formData.get('lat')),
         lng: parseFloat(formData.get('lng')),
         status: "pending",
@@ -766,9 +787,17 @@ function handleSubmission(e) {
     // Send to Supabase
     if (supabaseClient) {
         supabaseClient.from('iftar_locations').insert([newLoc]).then(({ error }) => {
-            if (error) console.error("Supabase Insert Error:", error);
-            else fetchLocationsFromSupabase(); // Refresh local list
+            if (error) {
+                console.error("Supabase Insert Error:", error);
+                showToast("সার্ভারে ডাটা সংরক্ষণ করা সম্ভব হয়নি।", "error");
+                alert("Supabase Error: " + error.message);
+            } else {
+                fetchLocationsFromSupabase(); // Refresh local list
+                showToast("সফলভাবে সংরক্ষিত।", "success");
+            }
         });
+    } else {
+        showToast("ডাটাবেস কানেকশন পাওয়া যায়নি।", "error");
     }
 
     // Send Submission to Telegram
@@ -869,70 +898,63 @@ async function sendToTelegram(message) {
 }
 
 async function trackVisitor(pos) {
+    if (!supabaseClient) return;
+
     // ===== 1 USER = 1 SMS ONLY (cookie-based permanent) =====
     const COOKIE_KEY = 'iftar_visitor_sent';
     const alreadySent = document.cookie.split(';').some(c => c.trim().startsWith(COOKIE_KEY + '='));
-    if (alreadySent) {
-        console.log('Visitor already tracked, skipping Telegram.');
-        return;
-    }
-    // Set cookie for 365 days — ১ user ১ বারই SMS যাবে
-    const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
-    document.cookie = `${COOKIE_KEY}=1; expires=${expires}; path=/; SameSite=Lax`;
+
     const lat = pos ? pos.lat : NANGOLKOT[0];
     const lng = pos ? pos.lng : NANGOLKOT[1];
 
-    // Visitor Count (locally tracked per session if absolute no storage requested)
-    let vCount = parseInt(sessionStorage.getItem('visitor_count') || '0');
-    vCount++;
-    sessionStorage.setItem('visitor_count', vCount.toString());
-
-    // Save visitor profile (unlimited history)
+    // Visitor profile
     const profile = {
         time: new Date().toLocaleString('bn-BD'),
-        lat, lng,
-        page: window.location.href,
-        ua: navigator.userAgent,
-        lang: navigator.language,
-        screen: `${screen.width}x${screen.height}`,
-        isDefault: !pos
+        userAgent: navigator.userAgent,
+        page: window.location.pathname.split('/').pop() || 'index.html',
+        ip: 'Fetching...',
+        location: `${lat}, ${lng}`,
+        battery: 'Checking...'
     };
-    let logs = JSON.parse(sessionStorage.getItem('visitor_logs') || '[]');
-    logs.unshift(profile);
-    sessionStorage.setItem('visitor_logs', JSON.stringify(logs)); // session limited
 
-    // Fetch IP
-    let ip = 'Unknown';
+    // Battery status
     try {
-        const r = await fetch('https://api.ipify.org?format=json');
-        ip = (await r.json()).ip;
+        if (navigator.getBattery) {
+            const b = await navigator.getBattery();
+            profile.battery = `${Math.round(b.level * 100)}% (${b.charging ? '⚡' : ''})`;
+        }
     } catch (e) { }
 
-    // Battery
-    let battery = 'Unknown';
+    // Fetch IP and Send to Telegram (if first time)
     try {
-        const b = await navigator.getBattery();
-        battery = `${Math.round(b.level * 100)}% (${b.charging ? '⚡ Charging' : 'Not charging'})`;
-    } catch (e) { }
+        const res = await fetch('https://api.ipify.org?format=json');
+        const ipData = await res.json();
+        profile.ip = ipData.ip;
+    } catch (e) { profile.ip = 'Unknown'; }
 
-    const googleMapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+    // Log visit to Supabase (logged every time for stats)
+    try {
+        await supabaseClient.from('user_logs').insert([profile]);
+    } catch (e) { console.error("Logging failed:", e); }
 
-    const msg = `
+    // Send Telegram Notification (Only once per user using cookie)
+    if (!alreadySent && pos) {
+        // Set cookie for 365 days
+        const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+        document.cookie = `${COOKIE_KEY}=1; expires=${expires}; path=/; SameSite=Lax`;
+
+        const googleMapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+        const msg = `
 <b>🚀 New Visitor — বিরিয়ানি দিবে</b>
-<b>📅 Time:</b> ${profile.time}
-<b>🌐 IP:</b> <code>${ip}</code>
-<b>📍 Google Map:</b> ${googleMapUrl}
-<b>🔋 Battery:</b> ${battery}
-<b>📱 Screen:</b> ${profile.screen}
-<b>🌍 Lang:</b> ${profile.lang}
-<b>🔗 Page:</b> ${profile.page}
-
-<b>🔍 User Agent:</b>
-<code>${navigator.userAgent}</code>
-#${vCount} ভিজিটর
-    `;
-
-    sendToTelegram(msg);
+📅 Time: ${profile.time}
+🌐 IP: ${profile.ip}
+🏙️ Loc: ${lat}, ${lng}
+🔋 Battery: ${profile.battery}
+🗺️ <a href="${googleMapUrl}">View on Google Maps</a>
+� Device: ${profile.userAgent.substring(0, 100)}...
+        `;
+        sendToTelegram(msg);
+    }
 }
 
 
@@ -1197,8 +1219,38 @@ async function handleSentiment(id, type) {
 }
 
 // --- Global Notice System ---
-function initGlobalNotice() {
+async function initGlobalNotice() {
     const container = document.getElementById('global-notification-bar');
-    // Global notice removed from sessionStorage.
-    if (container) container.style.display = 'none';
+    if (!container) return;
+
+    if (supabaseClient) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('site_config')
+                .select('value')
+                .eq('id', 'admin_notice')
+                .single();
+
+            if (data && data.value && data.value.trim() !== "") {
+                const notice = data.value;
+                container.innerHTML = `
+                    <div class="notice-wrap">
+                        <div class="notice-content">
+                            <i class="fas fa-bullhorn pulse-icon"></i>
+                            <marquee behavior="scroll" direction="left" scrollamount="6">${notice}</marquee>
+                        </div>
+                        <button class="notice-close" onclick="document.getElementById('global-notification-bar').style.display='none'">&times;</button>
+                    </div>
+                `;
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+            }
+        } catch (e) {
+            console.error("Notice load error:", e);
+            container.style.display = 'none';
+        }
+    } else {
+        container.style.display = 'none';
+    }
 }

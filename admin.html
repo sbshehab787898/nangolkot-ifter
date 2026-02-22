@@ -660,7 +660,14 @@
         const ADMIN_PASS = '787898';
         const SUPABASE_URL = "https://jbsjjhzcshjudeezywtr.supabase.co";
         const SUPABASE_KEY = "sb_publishable_WtOqT5OLD30iUnOVfPRK4w_zdqK09PT";
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let supabaseClient = null;
+        try {
+            const lib = window.supabase || window.Supabase;
+            if (lib) {
+                supabaseClient = lib.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+        } catch (e) { console.error("Admin Supabase Error:", e); }
 
         let failCount = 0;
         let blocked = false;
@@ -738,15 +745,25 @@
             }
         }
 
-        function showDashboard() {
+        async function showDashboard() {
             document.getElementById('gate').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
             fetchAdminData();
+            fetchLogs();
+            fetchNotice();
         }
 
         async function fetchAdminData() {
-            if (!supabaseClient) return;
+            if (!supabaseClient) {
+                alert("Supabase library loading issue!");
+                return;
+            }
             const { data, error } = await supabaseClient.from('iftar_locations').select('*').order('created_at', { ascending: false });
+            if (error) {
+                console.error("Fetch error:", error);
+                alert("Database load error: " + error.message);
+                return;
+            }
             if (data) locations = data;
             loadAdminData();
         }
@@ -760,19 +777,11 @@
         //  Dashboard Data
         // ============================================================
         function loadAdminData() {
-            const logs = JSON.parse(sessionStorage.getItem('user_logs') || '[]');
-            const visitorLogs = JSON.parse(sessionStorage.getItem('visitor_logs') || '[]');
-
-            document.getElementById('total-lifetime-visitors').textContent = sessionStorage.getItem('visitor_count') || '0';
-            document.getElementById('total-logs-count').textContent = logs.length + visitorLogs.length;
-
+            // Stats
             document.getElementById('d-total').textContent = locations.length;
             document.getElementById('d-reported').textContent = locations.filter(l => l.reports > 0).length;
 
-            // Notice (Disabled until Supabase implementation)
-            document.getElementById('admin-notice').value = '';
-
-            // Locations table
+            // Locations table - renders synchronously after fetch
             const tbody = document.getElementById('admin-list');
             const foodMap = { biryani: 'বিরিয়ানি', kacchi: 'কাচ্চি', khichuri: 'খিচুড়ি', muri: 'বুট মুড়ি', others: 'অন্যান্য' };
             tbody.innerHTML = locations.length
@@ -790,19 +799,38 @@
                     </tr>
                 `).join('')
                 : '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">কোন ডাটা নেই</td></tr>';
+        }
 
-            // Logs table
-            const ltbody = document.getElementById('user-logs-list');
-            ltbody.innerHTML = logs.length
-                ? [...logs].reverse().slice(0, 50).map(log => `
+        async function fetchLogs() {
+            if (!supabaseClient) return;
+            const { data, error } = await supabaseClient
+                .from('user_logs')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(100);
+
+            if (data) {
+                document.getElementById('total-logs-count').textContent = data.length;
+                const ltbody = document.getElementById('user-logs-list');
+                ltbody.innerHTML = data.map(log => `
                     <tr>
                         <td style="font-size:0.78rem;white-space:nowrap">${log.time}</td>
-                        <td style="font-size:0.75rem;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${log.userAgent || '—'}</td>
+                        <td style="font-size:0.75rem;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${log.userAgent}">${log.userAgent}</td>
                         <td>${log.battery || '—'}</td>
-                        <td><small>${log.url ? log.url.split('/').pop() || 'home' : 'home'}</small></td>
+                        <td><small>${log.page || 'home'}</small></td>
                     </tr>
-                `).join('')
-                : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">কোন রেকর্ড নেই</td></tr>';
+                `).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">কোন রেকর্ড নেই</td></tr>';
+            }
+        }
+
+        async function fetchNotice() {
+            if (!supabaseClient) return;
+            const { data, error } = await supabaseClient
+                .from('site_config')
+                .select('value')
+                .eq('id', 'admin_notice')
+                .single();
+            if (data) document.getElementById('admin-notice').value = data.value;
         }
 
         async function approveLocation(id) {
@@ -872,11 +900,23 @@
             loadAdminData();
         }
 
-        function saveNotice() {
-            // Notice saving to sessionStorage removed. 
+        async function saveNotice() {
+            const val = document.getElementById('admin-notice').value;
             const btn = document.querySelector('.save-notice-btn');
-            btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Supabase table required!';
-            setTimeout(() => btn.innerHTML = '<i class="fas fa-save"></i> আপডেট ও ব্রডকাস্ট করুন', 3000);
+
+            if (supabaseClient) {
+                const { error } = await supabaseClient
+                    .from('site_config')
+                    .update({ value: val, updated_at: new Date() })
+                    .eq('id', 'admin_notice');
+
+                if (!error) {
+                    btn.innerHTML = '<i class="fas fa-check"></i> ব্রডকাস্ট সফল!';
+                    setTimeout(() => btn.innerHTML = '<i class="fas fa-save"></i> আপডেট ও ব্রডকাস্ট করুন', 2000);
+                } else {
+                    alert("Error saving notice: " + error.message);
+                }
+            }
         }
 
         function resetVisitors() {
