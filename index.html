@@ -118,25 +118,62 @@
                                 <i class="fas fa-location-arrow"></i> আমার অবস্থান
                             </button>
                         </div>
+                        <!-- Map Legend -->
+                        <div id="map-legend" style="
+                            position:absolute; bottom:52px; left:10px; z-index:1000;
+                            background:rgba(6,43,33,0.88); backdrop-filter:blur(8px);
+                            border:1px solid rgba(251,191,36,0.3);
+                            border-radius:12px; padding:10px 14px;
+                            font-family:'Hind Siliguri',sans-serif; font-size:0.78rem;">
+                            <div style="color:var(--accent-gold);font-weight:700;margin-bottom:7px;font-size:0.8rem;">
+                                ম্যাপ লিজেন্ড</div>
+                            <div style="display:flex;flex-direction:column;gap:5px;">
+                                <span>🍛 <span style="color:#f59e0b;">&#9679;</span> বিরিয়ানি</span>
+                                <span>🍖 <span style="color:#d97706;">&#9679;</span> কাচ্চি</span>
+                                <span>🥘 <span style="color:#10b981;">&#9679;</span> খিচুড়ি</span>
+                                <span>🍚 <span style="color:#60a5fa;">&#9679;</span> বুট মুড়ি</span>
+                                <span>🍽️ <span style="color:#8b5cf6;">&#9679;</span> অন্যান্য</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="tab-content hidden" id="list-view">
-                    <div class="filter-bar">
-                        <select id="food-filter" class="form-control">
-                            <option value="all">সব খাবার</option>
-                            <option value="biryani">বিরিয়ানি</option>
-                            <option value="kacchi">কাচ্চি</option>
-                            <option value="khichuri">খিচুড়ি</option>
-                            <option value="muri">মুড়ি</option>
-                            <option value="others">অন্যান্য</option>
+                    <!-- Filter Bar -->
+                    <div style="padding:12px 0 8px;">
+                        <!-- Food Type Filter -->
+                        <div style="margin-bottom:8px;">
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:6px;">খাবারের ধরন:</div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;" id="food-chips">
+                                <button class="fchip active" data-val="all" onclick="setFoodChip(this)">সব</button>
+                                <button class="fchip" data-val="biryani" onclick="setFoodChip(this)">🍛
+                                    বিরিয়ানি</button>
+                                <button class="fchip" data-val="kacchi" onclick="setFoodChip(this)">🍖 কাচ্চি</button>
+                                <button class="fchip" data-val="khichuri" onclick="setFoodChip(this)">🥘
+                                    খিচুড়ি</button>
+                                <button class="fchip" data-val="muri" onclick="setFoodChip(this)">🍚 বুট মুড়ি</button>
+                                <button class="fchip" data-val="others" onclick="setFoodChip(this)">🍽️
+                                    অন্যান্য</button>
+                            </div>
+                        </div>
+                        <!-- Distance Filter -->
+                        <div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:6px;">দূরত্ব:</div>
+                            <div style="display:flex;gap:6px;">
+                                <button class="dchip active" data-val="all" onclick="setDistChip(this)">সব</button>
+                                <button class="dchip" data-val="5" onclick="setDistChip(this)">৫ কিমি</button>
+                                <button class="dchip" data-val="10" onclick="setDistChip(this)">১০ কিমি</button>
+                            </div>
+                        </div>
+                        <!-- Hidden inputs for JS compatibility -->
+                        <select id="food-filter" style="display:none">
+                            <option value="all">all</option>
                         </select>
-                        <select id="distance-filter" class="form-control">
-                            <option value="5">৫ কিমি এর মধ্যে</option>
-                            <option value="10">১০ কিমি এর মধ্যে</option>
-                            <option value="all">সব দূরত্ব</option>
+                        <select id="distance-filter" style="display:none">
+                            <option value="all">all</option>
                         </select>
                     </div>
+
                     <div id="location-list" class="location-grid">
                         <!-- Cards will be injected here -->
                         <div class="skeleton-card"></div>
@@ -163,28 +200,96 @@
                 <span class="close-modal">&times;</span>
             </div>
             <form id="submission-form" class="ramadan-form">
+
+                <!-- STEP 1: Map First -->
+                <div style="
+                    background:rgba(251,191,36,0.08);
+                    border:1px solid rgba(251,191,36,0.25);
+                    border-radius:14px; padding:14px; margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span style="
+                                background:var(--accent-gold);color:#064e3b;
+                                width:24px;height:24px;border-radius:50%;
+                                display:flex;align-items:center;justify-content:center;
+                                font-weight:700;font-size:0.85rem;flex-shrink:0;">১</span>
+                            <label style="margin:0;color:var(--accent-gold);font-weight:700;">
+                                ম্যাপে ক্লিক করে লোকেশন বেছে নিন *
+                            </label>
+                        </div>
+                        <!-- আমার অবস্থান button -->
+                        <button type="button" onclick="locateMiniMap()" style="
+                            display:flex;align-items:center;gap:5px;
+                            background:rgba(251,191,36,0.15);
+                            border:1px solid rgba(251,191,36,0.4);
+                            color:var(--accent-gold);
+                            padding:7px 12px;border-radius:20px;
+                            font-family:var(--font-bn);font-size:0.78rem;
+                            cursor:pointer;white-space:nowrap;
+                            transition:all 0.2s;" onmouseover="this.style.background='rgba(251,191,36,0.25)'"
+                            onmouseout="this.style.background='rgba(251,191,36,0.15)'">
+                            <i class="fas fa-location-crosshairs"></i> আমার অবস্থান
+                        </button>
+                    </div>
+                    <div id="mini-map"></div>
+                    <input type="hidden" name="lat" id="form-lat">
+                    <input type="hidden" name="lng" id="form-lng">
+                    <p id="loc-confirm-msg" style="
+                        display:none;margin-top:8px;font-size:0.8rem;
+                        color:#10b981;text-align:center;">
+                        ✅ লোকেশন নির্বাচন হয়েছে!
+                    </p>
+                    <p style="font-size:0.72rem;color:var(--text-muted);margin-top:6px;text-align:center;">
+                        <i class="fas fa-hand-pointer"></i> ম্যাপে ট্যাপ করুন — অথবা উপরের বাটনে ক্লিক করুন
+                    </p>
+                </div>
+
+                <!-- STEP 2: Details -->
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                    <span style="
+                        background:rgba(255,255,255,0.1);color:white;
+                        width:24px;height:24px;border-radius:50%;
+                        display:flex;align-items:center;justify-content:center;
+                        font-weight:700;font-size:0.85rem;flex-shrink:0;">২</span>
+                    <span style="color:var(--text-muted);font-size:0.9rem;font-weight:600;">তথ্য পূরণ করুন</span>
+                </div>
+
+                <div class="form-group" style="position:relative">
+                    <label>প্রতিষ্ঠান / মসজিদের নাম *</label>
+                    <input type="text" id="orgNameInput" name="orgName"
+                        placeholder="যেমন: নাঙ্গলকোট কেন্দ্রীয় জামে মসজিদ" autocomplete="off"
+                        oninput="showOrgSuggestions(this.value)"
+                        onblur="setTimeout(()=>document.getElementById('org-suggestions').style.display='none',200)"
+                        required>
+                    <ul id="org-suggestions" style="
+                        display:none; position:absolute; top:100%; left:0; right:0;
+                        background:#065f46; border:1px solid var(--accent-gold);
+                        border-radius:12px; margin:4px 0 0; padding:6px 0;
+                        list-style:none; z-index:9999; max-height:200px;
+                        overflow-y:auto; box-shadow:0 12px 32px rgba(0,0,0,0.5);
+                        font-family:'Hind Siliguri',sans-serif;">
+                    </ul>
+                </div>
+
                 <div class="form-group">
                     <label>খাবারের ধরন *</label>
-                    <select name="foodType" required>
-                        <option value="biryani">🍛 বিরিয়ানি</option>
-                        <option value="kacchi">🍖 কাচ্চি</option>
-                        <option value="khichuri">🥘 খিচুড়ি</option>
-                        <option value="muri">🍚 মুড়ি</option>
-                        <option value="others">🍽️ অন্যান্য</option>
+                    <select name="foodType" required
+                        style="background:#065f46;color:white;border:1px solid var(--glass-border);padding:12px;border-radius:10px;width:100%;font-family:var(--font-bn);font-size:1rem;cursor:pointer;">
+                        <option value="biryani" style="background:#065f46;">🍛 বিরিয়ানি</option>
+                        <option value="kacchi" style="background:#065f46;">🍖 কাচ্চি</option>
+                        <option value="khichuri" style="background:#065f46;">🥘 খিচুড়ি</option>
+                        <option value="muri" style="background:#065f46;">🍚 বুট মুড়ি</option>
+                        <option value="others" style="background:#065f46;">🍽️ অন্যান্য</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>প্রতিষ্ঠান / মসজিদের নাম *</label>
-                    <input type="text" name="orgName" placeholder="যেমন: বায়তুল মোকাররম মসজিদ / রহমত ফাউন্ডেশন"
-                        required>
-                </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label>তারিখ *</label>
                         <input type="date" name="date" required>
                     </div>
                     <div class="form-group">
-                        <label>সময় *</label>
+                        <label>সময় *</label>
                         <input type="time" name="time" value="18:15" required>
                     </div>
                 </div>
@@ -194,7 +299,7 @@
                         <input type="number" name="quantity" placeholder="যেমন: ১০০">
                     </div>
                     <div class="form-group">
-                        <label>প্রতিদিন হয়?</label>
+                        <label>প্রতিদিন হয়?</label>
                         <div class="toggle-switch">
                             <input type="checkbox" id="isDaily" name="isDaily">
                             <label for="isDaily"></label>
@@ -202,18 +307,12 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>লোকেশন নির্বাচন করুন (ম্যাপে ক্লিক করুন) *</label>
-                    <div id="mini-map"></div>
-                    <input type="hidden" name="lat" id="form-lat">
-                    <input type="hidden" name="lng" id="form-lng">
-                </div>
-                <div class="form-group">
                     <label>যোগাযোগ নম্বর (ঐচ্ছিক)</label>
                     <input type="tel" name="phone" placeholder="017xxxxxxxx">
                 </div>
                 <div class="form-group">
                     <label>অতিরিক্ত তথ্য (ঐচ্ছিক)</label>
-                    <textarea name="notes" placeholder="যেমন: গেট দিয়ে ঢুকতেই বাম পাশে..."></textarea>
+                    <textarea name="notes" placeholder="যেমন: গেট দিয়ে ঢুকতেই বাম পাশে..."></textarea>
                 </div>
                 <button type="submit" class="btn btn-gold btn-block">সাবমিট করুন</button>
             </form>
@@ -253,15 +352,50 @@
 
     <footer class="main-footer">
         <div class="container">
-            <p>&copy; ২০২৬ বিরিয়ানি দিবে | জনস্বার্থে একটি সেবামূলক প্ল্যাটফর্ম</p>
-            <div class="footer-links">
-                <a href="#about">আমাদের সম্পর্কে</a>
-                <a href="#privacy">প্রাইভেসি পলিসি</a>
+
+            <!-- Developer Credit — সবার উপরে -->
+            <div style="text-align:center; margin-bottom:16px;">
+                <div style="
+                    display:inline-flex; align-items:center; gap:12px;
+                    background:rgba(251,191,36,0.08);
+                    border:1px solid rgba(251,191,36,0.25);
+                    border-radius:50px; padding:10px 20px;">
+                    <span style="font-size:1.3rem;">👨‍💻</span>
+                    <div style="text-align:left;line-height:1.3;">
+                        <div style="font-size:0.68rem;color:var(--text-muted);letter-spacing:0.05em;">DEVELOPED BY</div>
+                        <div style="font-weight:700;color:white;font-size:1rem;">S.B Shehab</div>
+                    </div>
+                    <a href="https://www.facebook.com/sbshehab2004" target="_blank" rel="noopener" style="
+                        display:flex; align-items:center; gap:6px;
+                        background:#1877f2; color:white;
+                        padding:8px 16px; border-radius:20px;
+                        text-decoration:none; font-size:0.83rem; font-weight:700;
+                        box-shadow:0 4px 12px rgba(24,119,242,0.35);
+                        transition:all 0.2s;" onmouseover="this.style.transform='scale(1.05)'"
+                        onmouseout="this.style.transform='scale(1)'">
+                        <i class="fab fa-facebook-f"></i> Facebook
+                    </a>
+                </div>
             </div>
-            <div class="dev-credit" style="display:none">
-                Built with <i class="fas fa-heart" style="color: #ef4444;"></i> by
-                <a href="https://www.facebook.com/sbshehab2004" target="_blank">S,B Shehab</a>
+
+            <!-- Divider -->
+            <div
+                style="height:1px;background:linear-gradient(90deg,transparent,rgba(251,191,36,0.25),transparent);margin-bottom:14px;">
             </div>
+
+            <!-- Links Row -->
+            <div class="footer-links" style="justify-content:center;margin-bottom:10px;">
+                <a href="about.html">আমাদের সম্পর্কে</a>
+                <span style="color:rgba(255,255,255,0.2);">|</span>
+                <a href="privacy.html">প্রাইভেসি পলিসি</a>
+            </div>
+
+            <!-- Copyright -->
+            <p style="color:rgba(156,163,175,0.6);font-size:0.8rem;text-align:center;">
+                &copy; ২০২৬ <span style="color:var(--accent-gold);">বিরিয়ানি দিবে</span>
+                &nbsp;|&nbsp; জনস্বার্থে একটি সেবামূলক প্ল্যাটফর্ম
+            </p>
+
         </div>
     </footer>
 

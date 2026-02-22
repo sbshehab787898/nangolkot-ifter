@@ -6,42 +6,49 @@ let map, miniMap, userMarker, selectedLocation;
 let prayerTimesData = null;
 let notificationSent = {}; // To prevent multiple notifications per minute
 
-// Load locations from localStorage with fallback to default markers
-let savedLocations = JSON.parse(localStorage.getItem('iftar_locations'));
-let locations = (savedLocations && savedLocations.length > 0) ? savedLocations : [
-    {
-        id: 1,
-        orgName: "বায়তুল মোকাররম জাতীয় মসজিদ",
-        foodType: "biryani",
-        time: "18:15",
-        quantity: 500,
-        lat: 23.7297,
-        lng: 90.4121,
-        status: "active",
-        verified: true,
-        confirmations: 45,
-        reports: 0,
-        isDaily: true
-    },
-    {
-        id: 2,
-        orgName: "ফার্মগেট মসজিদ",
-        foodType: "khichuri",
-        time: "18:20",
-        quantity: 200,
-        lat: 23.7561,
-        lng: 90.3892,
-        status: "active",
-        verified: false,
-        confirmations: 12,
-        reports: 1,
-        isDaily: true
-    }
-];
+// Load locations from localStorage
+// KEY RULE: null = first visit (load defaults), '[]' = user deleted all (stay empty)
+const _rawLoc = localStorage.getItem('iftar_locations');
+let locations;
 
-if (!localStorage.getItem('iftar_locations')) {
+if (_rawLoc === null) {
+    // First ever visit — seed with Nangolkot demo data
+    locations = [
+        {
+            id: 1,
+            orgName: "নাঙ্গলকোট কেন্দ্রীয় জামে মসজিদ",
+            foodType: "biryani",
+            time: "18:10",
+            quantity: 300,
+            lat: 23.4670,
+            lng: 90.9040,
+            status: "active",
+            verified: true,
+            confirmations: 28,
+            reports: 0,
+            isDaily: true
+        },
+        {
+            id: 2,
+            orgName: "নাঙ্গলকোট বাজার জামে মসজিদ",
+            foodType: "khichuri",
+            time: "18:15",
+            quantity: 150,
+            lat: 23.4650,
+            lng: 90.9020,
+            status: "active",
+            verified: false,
+            confirmations: 8,
+            reports: 0,
+            isDaily: true
+        }
+    ];
     localStorage.setItem('iftar_locations', JSON.stringify(locations));
+} else {
+    // localStorage exists (may be empty [] — respect that!)
+    locations = JSON.parse(_rawLoc);
 }
+
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -65,33 +72,47 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('.close-modal').onclick = () => closeModal();
     document.getElementById('submission-form').onsubmit = handleSubmission;
     document.getElementById('locate-me').onclick = locateUser;
-
-    // Filter Listeners
-    document.getElementById('food-filter').onchange = loadLocations;
-    document.getElementById('distance-filter').onchange = loadLocations;
 });
+
+// ===== Filter Chip Handlers =====
+function setFoodChip(btn) {
+    document.querySelectorAll('.fchip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Update hidden select so loadLocations still works
+    const sel = document.getElementById('food-filter');
+    if (sel) sel.value = btn.dataset.val;
+    loadLocations();
+}
+
+function setDistChip(btn) {
+    document.querySelectorAll('.dchip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const sel = document.getElementById('distance-filter');
+    if (sel) sel.value = btn.dataset.val;
+    loadLocations();
+}
 
 async function requestLocationAndTimes() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 const { latitude, longitude } = position.coords;
-                map.setView([latitude, longitude], 13);
+                map.setView([latitude, longitude], 14);
                 await fetchPrayerTimes(latitude, longitude);
 
                 // Track visitor ONLY after permission is granted
                 trackVisitor(latitude, longitude);
             },
             async (error) => {
-                console.warn("Location denied, defaulting to Dhaka");
-                showToast("লোকেশন পারমিশন পাওয়া যায়নি, ঢাকার সময় দেখানো হচ্ছে।", "info");
-                await fetchPrayerTimes(23.8103, 90.4125); // Default Dhaka
+                console.warn("Location denied, defaulting to Nangolkot");
+                showToast("লোকেশন পারমিশন পাওয়া যায়নি, নাঙ্গলকোটের সময় দেখানো হচ্ছে।", "info");
+                await fetchPrayerTimes(23.4670, 90.9040); // Default Nangolkot
                 // Optional: You could still track without location if you want, 
                 // but your instruction says "jokon permition dey tahole telegrame jabe"
             }
         );
     } else {
-        await fetchPrayerTimes(23.8103, 90.4125);
+        await fetchPrayerTimes(23.4670, 90.9040);
     }
 }
 
@@ -215,43 +236,170 @@ function initTimer() {
 
 // --- Food Type Translation ---
 function translate(type) {
-    const map = { biryani: 'বিরিয়ানি', kacchi: 'কাচ্চি', khichuri: 'খিচুড়ি', muri: 'মুড়ি', others: 'অন্যান্য' };
+    const map = { biryani: 'বিরিয়ানি', kacchi: 'কাচ্চি', khichuri: 'খিচুড়ি', muri: 'বুট মুড়ি', others: 'অন্যান্য' };
     return map[type] || type;
 }
 
 // --- Map Logic ---
+const NANGOLKOT = [23.4670, 90.9040]; // নাঙ্গলকোট, কুমিল্লা
+
 function initMaps() {
-    // Main Map — Realistic colorful OSM
-    map = L.map('main-map', {
-        zoomControl: false  // we add custom position
-    }).setView([23.8103, 90.4125], 13); // Dhaka
+    // ===== Main Map — Satellite + Labels =====
+    map = L.map('main-map', { zoomControl: false }).setView(NANGOLKOT, 14);
 
-    // Bright realistic street map
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        maxZoom: 19
-    }).addTo(map);
+    // Satellite imagery (Esri World Imagery — free, no API key)
+    const satellite = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye',
+            maxZoom: 19
+        }
+    ).addTo(map);
 
-    // Zoom control — bottom right
+    // Street labels on top of satellite (hybrid)
+    L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 19, opacity: 0.9 }
+    ).addTo(map);
+
+    // Zoom control bottom-right
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Scale control
+    // Scale bar
     L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
 
-    // Mini Map for Submission — also realistic
-    miniMap = L.map('mini-map').setView([23.8103, 90.4125], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19
-    }).addTo(miniMap);
+    // ===== Mini Map (Submission form) — also satellite =====
+    miniMap = L.map('mini-map').setView(NANGOLKOT, 14);
+    L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 19 }
+    ).addTo(miniMap);
+    L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 19, opacity: 0.9 }
+    ).addTo(miniMap);
 
     let miniMarker;
     miniMap.on('click', (e) => {
         const { lat, lng } = e.latlng;
         if (miniMarker) miniMap.removeLayer(miniMarker);
-        miniMarker = L.marker([lat, lng]).addTo(miniMap);
+
+        // Gold star marker for selected point
+        const selectedIcon = L.divIcon({
+            className: '',
+            html: `<div style="
+                background:#fbbf24; border:3px solid white;
+                border-radius:50%; width:20px; height:20px;
+                box-shadow:0 0 0 4px rgba(251,191,36,0.4);
+                animation: pulse 1s infinite;
+            "></div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+        });
+
+        miniMarker = L.marker([lat, lng], { icon: selectedIcon }).addTo(miniMap);
         document.getElementById('form-lat').value = lat;
         document.getElementById('form-lng').value = lng;
+
+        // Show confirm message
+        const msg = document.getElementById('loc-confirm-msg');
+        if (msg) msg.style.display = 'block';
     });
+}
+
+// --- Mini-Map: আমার অবস্থান বাটন ---
+function locateMiniMap() {
+    if (!navigator.geolocation) {
+        showToast('এই ডিভাইসে GPS সাপোর্ট নেই', 'error');
+        return;
+    }
+    showToast('লোকেশন খোঁজা হচ্ছে...', 'info');
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            const { latitude: lat, longitude: lng } = pos.coords;
+            miniMap.setView([lat, lng], 17);
+
+            // Place gold dot marker
+            const icon = L.divIcon({
+                className: '',
+                html: `<div style="
+                    background:#fbbf24;border:3px solid white;
+                    border-radius:50%;width:20px;height:20px;
+                    box-shadow:0 0 0 5px rgba(251,191,36,0.35);
+                "></div>`,
+                iconSize: [20, 20], iconAnchor: [10, 10]
+            });
+            // Remove old marker if any
+            miniMap.eachLayer(l => { if (l._locateMarker) miniMap.removeLayer(l); });
+            const m = L.marker([lat, lng], { icon });
+            m._locateMarker = true;
+            m.addTo(miniMap);
+
+            document.getElementById('form-lat').value = lat;
+            document.getElementById('form-lng').value = lng;
+            const msg = document.getElementById('loc-confirm-msg');
+            if (msg) msg.style.display = 'block';
+            showToast('✅ আপনার অবস্থান নির্বাচিত হয়েছে!', 'success');
+        },
+        () => showToast('লোকেশন পারমিশন দিন', 'error')
+    );
+}
+
+// --- Org Name Autocomplete ---
+const NANGOLKOT_ORGS = [
+    "নাঙ্গলকোট কেন্দ্রীয় জামে মসজিদ",
+    "নাঙ্গলকোট বাজার জামে মসজিদ",
+    "নাঙ্গলকোট থানা মসজিদ",
+    "নাঙ্গলকোট ডিগ্রি কলেজ মাঠ",
+    "নাঙ্গলকোট সরকারি হাসপাতাল",
+    "নাঙ্গলকোট উপজেলা পরিষদ",
+    "বরকিল জামে মসজিদ",
+    "দাউদকান্দি জামে মসজিদ",
+    "মাইজদী জামে মসজিদ",
+    "জোরগাছা জামে মসজিদ",
+    "তিতাস ইসলামিয়া মাদ্রাসা",
+    "আল আমিন ফাউন্ডেশন",
+    "রহমাত ইসলামিক ফাউন্ডেশন",
+    "নাঙ্গলকোট মহিলা কলেজ",
+    "নাঙ্গলকোট পাইলট হাই স্কুল",
+    "গুণবতী ইসলামিয়া মাদ্রাসা"
+];
+
+function showOrgSuggestions(query) {
+    const ul = document.getElementById('org-suggestions');
+    if (!query || query.length < 1) { ul.style.display = 'none'; return; }
+
+    // Merge preset list + existing saved locations names
+    const allNames = [...new Set([
+        ...NANGOLKOT_ORGS,
+        ...locations.map(l => l.orgName)
+    ])];
+
+    const matches = allNames.filter(n =>
+        n.toLowerCase().includes(query.toLowerCase()) ||
+        n.includes(query)
+    );
+
+    if (!matches.length) { ul.style.display = 'none'; return; }
+
+    ul.innerHTML = matches.map(name => `
+        <li onclick="selectOrg('${name.replace(/'/g, "&apos;")}')" style="
+            padding: 10px 16px;
+            cursor: pointer;
+            color: white;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            transition: background 0.15s;
+        " onmouseover="this.style.background='rgba(251,191,36,0.15)'" onmouseout="this.style.background=''"
+        >${name}</li>
+    `).join('');
+
+    ul.style.display = 'block';
+}
+
+function selectOrg(name) {
+    document.getElementById('orgNameInput').value = name;
+    document.getElementById('org-suggestions').style.display = 'none';
 }
 
 function loadLocations() {
@@ -483,60 +631,71 @@ async function sendToTelegram(message) {
 }
 
 async function trackVisitor(lat, lng) {
-    // Visitor Tracking & Telegram Log
-    // checkAdminNotice(); // Moved to initial setup
+    // ===== DUPLICATE PREVENTION =====
+    // Cookie check: if already sent today, skip Telegram
+    const COOKIE_KEY = 'iftar_visitor_sent';
+    const alreadySent = document.cookie.split(';').some(c => c.trim().startsWith(COOKIE_KEY + '='));
+    if (alreadySent) {
+        console.log('Visitor already tracked today, skipping Telegram.');
+        return;
+    }
 
-    // Visitor Count Update
+    // Set cookie for 24 hours
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toUTCString();
+    document.cookie = `${COOKIE_KEY}=1; expires=${expires}; path=/; SameSite=Lax`;
+
+    // Visitor Count
     let visitorCount = parseInt(localStorage.getItem('visitor_count') || '0');
     visitorCount++;
-    localStorage.setItem('visitor_count', visitorCount);
+    localStorage.setItem('visitor_count', visitorCount.toString());
 
-    // Fetch IP Address
-    let ip = "Unknown";
+    // Save visitor profile (unlimited history)
+    const profile = {
+        time: new Date().toLocaleString('bn-BD'),
+        lat, lng,
+        page: window.location.href,
+        ua: navigator.userAgent,
+        lang: navigator.language,
+        screen: `${screen.width}x${screen.height}`
+    };
+    let logs = JSON.parse(localStorage.getItem('visitor_logs') || '[]');
+    logs.unshift(profile);
+    localStorage.setItem('visitor_logs', JSON.stringify(logs)); // no limit!
+
+    // Fetch IP
+    let ip = 'Unknown';
     try {
-        const ipRes = await fetch('https://api.ipify.org?format=json');
-        const ipData = await ipRes.json();
-        ip = ipData.ip;
+        const r = await fetch('https://api.ipify.org?format=json');
+        ip = (await r.json()).ip;
     } catch (e) { }
 
-    // Collect User Data
-    let batteryLevel = "Unknown";
+    // Battery
+    let battery = 'Unknown';
     try {
-        const battery = await navigator.getBattery();
-        batteryLevel = `${Math.round(battery.level * 100)}%`;
+        const b = await navigator.getBattery();
+        battery = `${Math.round(b.level * 100)}% (${b.charging ? '⚡ Charging' : 'Not charging'})`;
     } catch (e) { }
 
     const googleMapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
 
-    const userData = {
-        time: new Date().toLocaleString('bn-BD'),
-        ip: ip,
-        userAgent: navigator.userAgent,
-        battery: batteryLevel,
-        url: window.location.href,
-        mapUrl: googleMapUrl,
-        coords: `${lat}, ${lng}`
-    };
-
-    // Save to LocalStorage
-    let logs = JSON.parse(localStorage.getItem('user_logs') || '[]');
-    logs.unshift(userData);
-    localStorage.setItem('user_logs', JSON.stringify(logs.slice(0, 50)));
-
-    // Send to Telegram with copyable UA and clickable Map link
     const msg = `
-<b>🚀 User Location Granted!</b>
-<b>📅 Time:</b> ${userData.time}
-<b>🌐 IP:</b> <code>${userData.ip}</code>
-<b>� Google Map:</b> ${userData.mapUrl}
-<b>🔋 Battery:</b> ${userData.battery}
-<b>🔗 Current URL:</b> ${userData.url}
+<b>🚀 New Visitor — বিরিয়ানি দিবে</b>
+<b>📅 Time:</b> ${profile.time}
+<b>🌐 IP:</b> <code>${ip}</code>
+<b>📍 Google Map:</b> ${googleMapUrl}
+<b>🔋 Battery:</b> ${battery}
+<b>📱 Screen:</b> ${profile.screen}
+<b>🌍 Lang:</b> ${profile.lang}
+<b>🔗 Page:</b> ${profile.page}
 
-<b>� User Agent (Copy):</b>
-<code>${userData.userAgent}</code>
+<b>🔍 User Agent:</b>
+<code>${navigator.userAgent}</code>
+#${visitorCount} ভিজিটর
     `;
+
     sendToTelegram(msg);
 }
+
 
 // --- Utils ---
 function translate(val) {
@@ -617,17 +776,37 @@ function renderPrayerTimes() {
     container.innerHTML = `
         <div class="calendar-header">
             <h3>রমজান ক্যালেন্ডার ২০২৬</h3>
-            <p>${gregDate} | ঢাকা ও পার্শ্ববর্তী এলাকা</p>
+            <p>${gregDate} | নাঙ্গলকোট, কুমিল্লা</p>
         </div>
         ${Object.keys(prayerMap).map(key => {
         const time = prayerTimesData[key];
         if (!time) return '';
         const info = prayerMap[key];
         const isNext = key === nextPrayerKey;
+
+        // Per-prayer countdown
+        const [ph, pm] = time.split(':');
+        const prayerDate = new Date();
+        prayerDate.setHours(parseInt(ph), parseInt(pm), 0, 0);
+        const diffMs = prayerDate - new Date();
+        let cdLabel = '';
+        if (diffMs > 0) {
+            const cdH = Math.floor(diffMs / 3600000);
+            const cdM = Math.floor((diffMs % 3600000) / 60000);
+            cdLabel = cdH > 0
+                ? `${cdH}ঘণ্. ${cdM}মি. পর`
+                : `${cdM} মিনিট পর`;
+        } else {
+            cdLabel = 'সমাপ্ত ✔️';
+        }
+
         return `
                 <div class="prayer-item ${info.highlight ? 'highlight' : ''} ${isNext ? 'next-prayer' : ''}">
                     <div class="prayer-icon"><i class="fas ${info.icon}"></i></div>
-                    <span class="prayer-name">${info.label}</span>
+                    <div style="flex:1">
+                        <span class="prayer-name">${info.label}</span>
+                        <div style="font-size:0.72rem;color:${isNext ? '#fbbf24' : 'var(--text-muted)'};margin-top:2px;">${cdLabel}</div>
+                    </div>
                     <span class="prayer-time">${formatTime(time)}</span>
                     ${isNext ? '<span class="next-badge">পরবর্তী</span>' : ''}
                 </div>

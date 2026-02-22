@@ -675,7 +675,7 @@
                     <button class="chip" data-food="biryani" onclick="setFoodFilter(this)">🍛 বিরিয়ানি</button>
                     <button class="chip" data-food="kacchi" onclick="setFoodFilter(this)">🍖 কাচ্চি</button>
                     <button class="chip" data-food="khichuri" onclick="setFoodFilter(this)">🥘 খিচুড়ি</button>
-                    <button class="chip" data-food="muri" onclick="setFoodFilter(this)">🍚 মুড়ি</button>
+                    <button class="chip" data-food="muri" onclick="setFoodFilter(this)">🍚 বুট মুড়ি</button>
                     <button class="chip" data-food="others" onclick="setFoodFilter(this)">🍽️ অন্যান্য</button>
                 </div>
             </div>
@@ -714,18 +714,22 @@
 
     <script>
         // --- Data ---
-        let locations = JSON.parse(localStorage.getItem('iftar_locations') || '[]');
-        if (!locations.length) {
+        // null = first visit (load defaults), '[]' = deleted all (respect that!)
+        const _rawLoc = localStorage.getItem('iftar_locations');
+        let locations;
+        if (_rawLoc === null) {
             locations = [
                 { id: 1, orgName: "বায়তুল মোকাররম জাতীয় মসজিদ", foodType: "biryani", time: "18:15", quantity: 500, lat: 23.7297, lng: 90.4121, status: "active", verified: true, confirmations: 45, reports: 0 },
                 { id: 2, orgName: "ফার্মগেট মসজিদ", foodType: "khichuri", time: "18:20", quantity: 200, lat: 23.7561, lng: 90.3892, status: "active", verified: false, confirmations: 12, reports: 1 }
             ];
             localStorage.setItem('iftar_locations', JSON.stringify(locations));
+        } else {
+            locations = JSON.parse(_rawLoc); // may be [] — that's fine!
         }
 
         let activeFoodFilter = 'all';
 
-        const foodLabels = { biryani: '🍛 বিরিয়ানি', kacchi: '🍖 কাচ্চি', khichuri: '🥘 খিচুড়ি', muri: '🍚 মুড়ি', others: '🍽️ অন্যান্য' };
+        const foodLabels = { biryani: '🍛 বিরিয়ানি', kacchi: '🍖 কাচ্চি', khichuri: '🥘 খিচুড়ি', muri: '🍚 বুট মুড়ি', others: '🍽️ অন্যান্য' };
 
         // --- Render ---
         function renderStats() {

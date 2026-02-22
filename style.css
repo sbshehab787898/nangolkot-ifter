@@ -753,3 +753,83 @@ textarea {
         transform: scale(1);
     }
 }
+
+/* ===== Filter Chips (index.html list-view) ===== */
+.fchip,
+.dchip {
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-muted);
+    font-family: var(--font-bn);
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.fchip:hover,
+.dchip:hover {
+    background: rgba(251, 191, 36, 0.12);
+    border-color: rgba(251, 191, 36, 0.4);
+    color: var(--accent-gold);
+}
+
+.fchip.active,
+.dchip.active {
+    background: var(--accent-gold);
+    border-color: var(--accent-gold);
+    color: #064e3b;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+/* ===== Footer ===== */
+.main-footer {
+    background: linear-gradient(180deg, rgba(2, 26, 19, 0) 0%, rgba(2, 26, 19, 0.95) 20%);
+    border-top: 1px solid rgba(251, 191, 36, 0.12);
+    padding: 28px 0 20px;
+    margin-top: 40px;
+}
+
+.footer-links {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.footer-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    position: relative;
+    padding-bottom: 2px;
+    transition: color 0.2s;
+}
+
+.footer-links a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--accent-gold);
+    transition: width 0.25s;
+}
+
+.footer-links a:hover {
+    color: var(--accent-gold);
+}
+
+.footer-links a:hover::after {
+    width: 100%;
+}
+
+/* Prayer item flex fix */
+.prayer-item {
+    display: flex;
+    align-items: center;
+}

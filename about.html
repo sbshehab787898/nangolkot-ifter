@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="bn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>আমাদের সম্পর্কে | বিরিয়ানি দিবে</title>
+    <meta name="description" content="বিরিয়ানি দিবে — একটি কমিউনিটি-চালিত ইফতার বিতরণ ট্র্যাকিং প্ল্যাটফর্ম।">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=Outfit:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .about-hero {
+            text-align: center;
+            padding: 48px 0 32px;
+        }
+
+        .about-hero .emoji-big {
+            font-size: 4rem;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .about-hero h1 {
+            font-family: var(--font-en);
+            font-size: 2rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .about-hero h1 span {
+            color: var(--accent-gold);
+        }
+
+        .about-hero p {
+            color: var(--text-muted);
+            font-size: 1rem;
+            line-height: 1.7;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .about-card {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 16px;
+            transition: transform 0.2s;
+        }
+
+        .about-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .about-card .card-icon {
+            font-size: 2rem;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .about-card h3 {
+            color: var(--accent-gold);
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .about-card p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.7;
+        }
+
+        .mission-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .dev-section {
+            background: linear-gradient(135deg, rgba(6, 78, 59, 0.8), rgba(6, 46, 33, 0.9));
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 24px;
+            padding: 32px;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .dev-avatar {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--accent-gold), #f59e0b);
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            box-shadow: 0 8px 24px rgba(251, 191, 36, 0.3);
+        }
+
+        .dev-name {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 4px;
+        }
+
+        .dev-role {
+            color: var(--accent-gold);
+            font-size: 0.88rem;
+            margin-bottom: 16px;
+            letter-spacing: 0.05em;
+        }
+
+        .dev-desc {
+            color: var(--text-muted);
+            font-size: 0.92rem;
+            line-height: 1.7;
+            max-width: 400px;
+            margin: 0 auto 20px;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(251, 191, 36, 0.4), transparent);
+        }
+
+        .stat-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 24px;
+        }
+
+        .stat-item {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 16px 24px;
+            text-align: center;
+        }
+
+        .stat-item .num {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--accent-gold);
+        }
+
+        .stat-item .lbl {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="stars-container"></div>
+
+    <!-- Header -->
+    <header style="
+        background:rgba(6,78,59,0.95);
+        backdrop-filter:blur(14px);
+        -webkit-backdrop-filter:blur(14px);
+        border-bottom:1px solid var(--glass-border);
+        position:sticky; top:0; z-index:300;">
+        <div class="container"
+            style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;padding-bottom:12px;">
+            <a href="index.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;">
+                <i class="fas fa-arrow-left" style="color:var(--accent-gold);"></i>
+                <span style="font-family:var(--font-en);font-weight:700;font-size:1.1rem;color:white;">
+                    🌙 <span style="color:var(--accent-gold);">বিরিয়ানি</span> দিবে
+                </span>
+            </a>
+            <span style="color:var(--text-muted);font-size:0.85rem;">আমাদের সম্পর্কে</span>
+        </div>
+    </header>
+
+    <main class="container" style="padding-top:0;padding-bottom:80px;">
+
+        <!-- Hero -->
+        <div class="about-hero">
+            <span class="emoji-big">🍛</span>
+            <h1><span>বিরিয়ানি</span> দিবে</h1>
+            <p>রমজান মাসে বিনামূল্যে ইফতার বিতরণের তথ্য এক জায়গায় — কমিউনিটির জন্য, কমিউনিটি দ্বারা।</p>
+
+            <div class="stat-row">
+                <div class="stat-item">
+                    <div class="num">🕌</div>
+                    <div class="lbl">মসজিদ ও প্রতিষ্ঠান</div>
+                </div>
+                <div class="stat-item">
+                    <div class="num">🗺️</div>
+                    <div class="lbl">ইন্টারেক্টিভ ম্যাপ</div>
+                </div>
+                <div class="stat-item">
+                    <div class="num">🔔</div>
+                    <div class="lbl">লাইভ আপডেট</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mission -->
+        <div class="section-title">
+            <i class="fas fa-bullseye" style="color:var(--accent-gold);"></i>
+            আমাদের লক্ষ্য
+        </div>
+        <div class="mission-grid">
+            <div class="about-card">
+                <span class="card-icon">🤝</span>
+                <h3>কমিউনিটি সেবা</h3>
+                <p>রমজান মাসে যারা বিনামূল্যে ইফতার বিতরণ করেন এবং যারা ইফতার খুঁজছেন — তাদের সংযুক্ত করাই আমাদের মূল
+                    লক্ষ্য।</p>
+            </div>
+            <div class="about-card">
+                <span class="card-icon">🗺️</span>
+                <h3>স্যাটেলাইট ম্যাপ</h3>
+                <p>আসল স্যাটেলাইট ম্যাপে ইফতার স্পট দেখুন। রাস্তা চিনুন, লোকেশন বুঝুন — সহজে পৌঁছান।</p>
+            </div>
+            <div class="about-card">
+                <span class="card-icon">✅</span>
+                <h3>সত্যাপন সিস্টেম</h3>
+                <p>"পেয়েছি" ও "পাইনি" বাটনের মাধ্যমে কমিউনিটি নিজেই তথ্য যাচাই করে। মিথ্যা তথ্য রিপোর্ট ব্যবস্থা আছে।
+                </p>
+            </div>
+            <div class="about-card">
+                <span class="card-icon">🕌</span>
+                <h3>নামাজের সময়</h3>
+                <p>আপনার অবস্থান অনুযায়ী সঠিক নামাজের সময়সূচি। ইফতার কাউন্টডাউন সহ।</p>
+            </div>
+            <div class="about-card">
+                <span class="card-icon">📱</span>
+                <h3>PWA সাপোর্ট</h3>
+                <p>মোবাইলে অ্যাপের মতো ব্যবহার করুন। ইন্টারনেট ছাড়াও কিছু ফিচার কাজ করে।</p>
+            </div>
+            <div class="about-card">
+                <span class="card-icon">🔒</span>
+                <h3>লগইন ছাড়া</h3>
+                <p>কোনো অ্যাকাউন্ট বা রেজিস্ট্রেশন দরকার নেই। সরাসরি লোকেশন যোগ করুন।</p>
+            </div>
+        </div>
+
+        <!-- Developer -->
+        <div class="section-title">
+            <i class="fas fa-code" style="color:var(--accent-gold);"></i>
+            ডেভেলপার
+        </div>
+        <div class="dev-section">
+            <div class="dev-avatar">👨‍💻</div>
+            <div class="dev-name">S.B Shehab</div>
+            <div class="dev-role">FULL STACK DEVELOPER · DESIGNER</div>
+            <p class="dev-desc">
+                নাঙ্গলকোট এলাকার মানুষের জন্য রমজান মাসকে আরো সহজ করতে এই প্ল্যাটফর্মটি তৈরি করা হয়েছে।
+                সম্পূর্ণ বিনামূল্যে এবং জনস্বার্থে।
+            </p>
+            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                <a href="https://www.facebook.com/sbshehab2004" target="_blank" rel="noopener" style="
+                    display:inline-flex; align-items:center; gap:8px;
+                    background:#1877f2; color:white;
+                    padding:12px 24px; border-radius:50px;
+                    text-decoration:none; font-weight:700; font-size:0.95rem;
+                    box-shadow:0 6px 20px rgba(24,119,242,0.4);
+                    transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'"
+                    onmouseout="this.style.transform='scale(1)'">
+                    <i class="fab fa-facebook-f"></i> Facebook এ যোগাযোগ করুন
+                </a>
+            </div>
+        </div>
+
+        <!-- খাবার তালিকা -->
+        <div class="section-title">
+            <i class="fas fa-utensils" style="color:var(--accent-gold);"></i>
+            সমর্থিত খাবার
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:32px;">
+            <span
+                style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;padding:8px 16px;border-radius:20px;font-size:0.9rem;">🍛
+                বিরিয়ানি</span>
+            <span
+                style="background:rgba(217,119,6,0.15);border:1px solid rgba(217,119,6,0.3);color:#d97706;padding:8px 16px;border-radius:20px;font-size:0.9rem;">🍖
+                কাচ্চি</span>
+            <span
+                style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#10b981;padding:8px 16px;border-radius:20px;font-size:0.9rem;">🥘
+                খিচুড়ি</span>
+            <span
+                style="background:rgba(96,165,250,0.15);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:8px 16px;border-radius:20px;font-size:0.9rem;">🍚
+                বুট মুড়ি</span>
+            <span
+                style="background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.3);color:#8b5cf6;padding:8px 16px;border-radius:20px;font-size:0.9rem;">🍽️
+                অন্যান্য</span>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <div class="container">
+            <div class="footer-links" style="justify-content:center;margin-bottom:10px;">
+                <a href="about.html" style="color:var(--accent-gold);">আমাদের সম্পর্কে</a>
+                <span style="color:rgba(255,255,255,0.2);">|</span>
+                <a href="privacy.html">প্রাইভেসি পলিসি</a>
+                <span style="color:rgba(255,255,255,0.2);">|</span>
+                <a href="index.html">হোম</a>
+            </div>
+            <p style="color:rgba(156,163,175,0.5);font-size:0.78rem;text-align:center;">
+                &copy; ২০২৬ বিরিয়ানি দিবে | Developed by S.B Shehab
+            </p>
+        </div>
+    </footer>
+</body>
+
+</html>
