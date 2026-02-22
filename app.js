@@ -68,11 +68,12 @@ if (_rawLoc === null) {
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
-    initTabs();
+    updateDate();
     initMaps();
+    initTabs();
+    initGlobalNotice();
     renderStats();
     loadLocations();
-    updateDate();
 
     // Request Location Permission & Load Times
     requestLocationAndTimes();
@@ -83,9 +84,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check for alerts every minute
     setInterval(checkForTimeAlerts, 60000);
 
+    // Refresh prayer times every minute for countdown
+    setInterval(renderPrayerTimes, 60000);
+
     // UI Events
     document.getElementById('add-btn').onclick = () => openModal();
-    document.querySelector('.close-modal').onclick = () => closeModal();
+    const closeBtn = document.querySelector('.close-modal');
+    if (closeBtn) closeBtn.onclick = () => closeModal();
     document.getElementById('submission-form').onsubmit = handleSubmission;
     document.getElementById('locate-me').onclick = locateUser;
 });
@@ -113,21 +118,23 @@ async function requestLocationAndTimes() {
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 const { latitude, longitude } = position.coords;
+                // Update map and user marker
+                if (userMarker) map.removeLayer(userMarker);
+                userMarker = L.circle([latitude, longitude], { radius: 50, color: 'gold' }).addTo(map);
                 map.setView([latitude, longitude], 14);
-                await fetchPrayerTimes(latitude, longitude);
 
-                // Track visitor ONLY after permission is granted
+                await fetchPrayerTimes(latitude, longitude);
                 trackVisitor(latitude, longitude);
             },
             async (error) => {
                 console.warn("Location denied, defaulting to Nangolkot");
                 showToast("লোকেশন পারমিশন পাওয়া যায়নি, নাঙ্গলকোটের সময় দেখানো হচ্ছে।", "info");
+                map.setView(NANGOLKOT, 13);
                 await fetchPrayerTimes(23.4670, 90.9040); // Default Nangolkot
-                // Optional: You could still track without location if you want, 
-                // but your instruction says "jokon permition dey tahole telegrame jabe"
             }
         );
     } else {
+        map.setView(NANGOLKOT, 13);
         await fetchPrayerTimes(23.4670, 90.9040);
     }
 }
@@ -926,19 +933,6 @@ function formatTime(time24) {
     const h12 = hours % 12 || 12;
     return `${String(h12).padStart(2, '0')}:${m} ${suffix}`;
 }
-
-// --- Initialization ---
-window.onload = () => {
-    updateDate();
-    initMaps();
-    initTabs();
-    initGlobalNotice();
-    if (localStorage.getItem('admin_notice')) {
-        initGlobalNotice();
-    }
-    // Refresh prayer times every minute for countdown
-    setInterval(renderPrayerTimes, 60000);
-};
 
 // --- Global Notice System ---
 function initGlobalNotice() {
