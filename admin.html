@@ -492,14 +492,48 @@
                 </div>
             </div>
 
-            <!-- Notice -->
-            <h3 class="section-head"><i class="fas fa-bullhorn"></i> নোটিশ বোর্ড</h3>
+            <!-- Notice Management -->
+            <h3 class="section-head"><i class="fas fa-bullhorn"></i> গ্লোবাল নোটিশ (সবার ব্রাউজারে দেখাবে)</h3>
             <div class="notice-card">
                 <textarea id="admin-notice" class="form-control"
-                    placeholder="ব্যবহারকারীদের জন্য নোটিশ লিখুন..."></textarea>
-                <button class="save-notice-btn" onclick="saveNotice()">
-                    <i class="fas fa-save"></i> আপডেট করুন
-                </button>
+                    placeholder="এখানে কিছু লিখলে হোমপেজে লাল মারকুই (চলমান লেখা) হিসেবে দেখাবে..."></textarea>
+                <div style="display:flex; gap:10px;">
+                    <button class="save-notice-btn" onclick="saveNotice()">
+                        <i class="fas fa-save"></i> আপডেট ও ব্রডকাস্ট করুন
+                    </button>
+                    <button class="act-btn act-delete"
+                        onclick="document.getElementById('admin-notice').value=''; saveNotice();">
+                        <i class="fas fa-times-circle"></i> নোটিশ মুছুন
+                    </button>
+                </div>
+            </div>
+
+            <!-- Advanced Management -->
+            <h3 class="section-head"><i class="fas fa-cogs"></i> অ্যাডভান্সড ম্যানেজমেন্ট</h3>
+            <div
+                style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:36px;">
+                <div class="notice-card" style="margin:0; padding:15px; text-align:center;">
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:5px;">মোট ভিজিটর (Lifetime)
+                    </div>
+                    <div style="font-size:1.5rem; font-weight:700; color:var(--accent-gold);"
+                        id="total-lifetime-visitors">0</div>
+                    <button class="act-btn act-delete" style="margin-top:10px; width:100%"
+                        onclick="resetVisitors()">রিসেট ভিজিটর</button>
+                </div>
+                <div class="notice-card" style="margin:0; padding:15px; text-align:center;">
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:5px;">ভিজিটর লগ (Tracking)
+                    </div>
+                    <div style="font-size:1.5rem; font-weight:700; color:var(--accent-gold);" id="total-logs-count">0
+                    </div>
+                    <button class="act-btn act-delete" style="margin-top:10px; width:100%" onclick="clearLogs()">সব লগ
+                        মুছুন</button>
+                </div>
+                <div class="notice-card" style="margin:0; padding:15px; text-align:center;">
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:5px;">ডেটা ব্যাকআপ</div>
+                    <div style="font-size:0.9rem; margin-top:5px; color:white;">সব লোকেশন কপি করুন</div>
+                    <button class="act-btn act-approve" style="margin-top:10px; width:100%"
+                        onclick="exportData()">Export JSON</button>
+                </div>
             </div>
 
             <!-- Locations Table -->
@@ -637,11 +671,13 @@
         //  Dashboard Data
         // ============================================================
         function loadAdminData() {
-            const locations = JSON.parse(localStorage.getItem('iftar_locations') || '[]');
             const logs = JSON.parse(localStorage.getItem('user_logs') || '[]');
+            const visitorLogs = JSON.parse(localStorage.getItem('visitor_logs') || '[]');
+
+            document.getElementById('total-lifetime-visitors').textContent = localStorage.getItem('visitor_count') || '0';
+            document.getElementById('total-logs-count').textContent = logs.length + visitorLogs.length;
 
             document.getElementById('d-total').textContent = locations.length;
-            document.getElementById('d-pending').textContent = locations.filter(l => l.status === 'pending').length;
             document.getElementById('d-reported').textContent = locations.filter(l => l.reports > 0).length;
 
             // Notice
@@ -698,8 +734,31 @@
         function saveNotice() {
             localStorage.setItem('admin_notice', document.getElementById('admin-notice').value);
             const btn = document.querySelector('.save-notice-btn');
-            btn.textContent = '✅ সেভ হয়েছে!';
-            setTimeout(() => btn.innerHTML = '<i class="fas fa-save"></i> আপডেট করুন', 2000);
+            btn.innerHTML = '<i class="fas fa-check"></i> ব্রডকাস্ট সফল!';
+            setTimeout(() => btn.innerHTML = '<i class="fas fa-save"></i> আপডেট ও ব্রডকাস্ট করুন', 2000);
+        }
+
+        function resetVisitors() {
+            if (!confirm('সব ভিজিটর কাউন্ট শূন্য করবেন?')) return;
+            localStorage.setItem('visitor_count', '0');
+            loadAdminData();
+        }
+
+        function clearLogs() {
+            if (!confirm('সব ইউজার ট্র্যাকিং লগ ডিলিট করবেন?')) return;
+            localStorage.removeItem('visitor_logs');
+            localStorage.removeItem('user_logs');
+            loadAdminData();
+        }
+
+        function exportData() {
+            const data = localStorage.getItem('iftar_locations');
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `iftar_backup_${new Date().getTime()}.json`;
+            a.click();
         }
     </script>
 </body>

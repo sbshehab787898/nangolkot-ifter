@@ -828,6 +828,103 @@ textarea {
     width: 100%;
 }
 
+/* Global Notice Bar */
+#global-notification-bar {
+    background: linear-gradient(90deg, #064e3b, #065f46);
+    border-bottom: 2px solid var(--accent-gold);
+    color: white;
+    padding: 10px 0;
+    z-index: 1001;
+    overflow: hidden;
+}
+
+.notice-wrap {
+    max-width: var(--container-max);
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+    gap: 15px;
+}
+
+.notice-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    overflow: hidden;
+}
+
+.notice-wrap marquee {
+    font-family: var(--font-bn);
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--accent-gold);
+}
+
+.pulse-icon {
+    animation: pulse 1.5s infinite;
+    color: #fbbf24;
+}
+
+.notice-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+/* Premium Footer */
+.fb-btn {
+    background: #1877f2;
+    color: white !important;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.fb-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(24, 119, 242, 0.4);
+}
+
+/* Lush Green Map Filter — Vibrant & High Contrast */
+.leaflet-tile-pane {
+    filter: saturate(1.8) contrast(1.15) brightness(1.05) hue-rotate(-12deg);
+}
+
+/* Desktop Full Screen Optimization */
+@media (min-width: 992px) {
+    body {
+        overflow-x: hidden;
+    }
+
+    .container {
+        max-width: 1400px;
+        padding: 0 60px;
+    }
+
+    #main-map {
+        height: 750px;
+        border-radius: 32px;
+        box-shadow: 0 20px 80px rgba(0, 0, 0, 0.6);
+    }
+
+    .location-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+    }
+}
+
 /* Prayer item flex fix */
 .prayer-item {
     display: flex;

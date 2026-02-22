@@ -12,40 +12,56 @@ const _rawLoc = localStorage.getItem('iftar_locations');
 let locations;
 
 if (_rawLoc === null) {
-    // First ever visit — seed with Nangolkot demo data
+    // First ever visit — seed with user's requested data
     locations = [
         {
             id: 1,
-            orgName: "নাঙ্গলকোট কেন্দ্রীয় জামে মসজিদ",
+            orgName: "বায়তুল মোকাররম জাতীয় মসজিদ",
             foodType: "biryani",
-            time: "18:10",
-            quantity: 300,
-            lat: 23.4670,
-            lng: 90.9040,
+            date: "2026-03-01",
+            time: "18:15",
+            quantity: 500,
+            lat: 23.7291,
+            lng: 90.4121,
             status: "active",
             verified: true,
-            confirmations: 28,
+            confirmations: 45,
             reports: 0,
             isDaily: true
         },
         {
             id: 2,
-            orgName: "নাঙ্গলকোট বাজার জামে মসজিদ",
+            orgName: "ফার্মগেট কেন্দ্রীয় মসজিদ",
             foodType: "khichuri",
-            time: "18:15",
-            quantity: 150,
-            lat: 23.4650,
-            lng: 90.9020,
+            date: "2026-03-01",
+            time: "18:20",
+            quantity: 200,
+            lat: 23.7561,
+            lng: 90.3907,
             status: "active",
             verified: false,
-            confirmations: 8,
+            confirmations: 13,
+            reports: 1,
+            isDaily: true
+        },
+        {
+            id: 3,
+            orgName: "s.akfnalikrfgawerg",
+            foodType: "muri",
+            date: "2026-03-01",
+            time: "18:15",
+            quantity: 0, // অজানা জন
+            lat: 23.7500,
+            lng: 90.3800,
+            status: "active",
+            verified: true,
+            confirmations: 5,
             reports: 0,
             isDaily: true
         }
     ];
     localStorage.setItem('iftar_locations', JSON.stringify(locations));
 } else {
-    // localStorage exists (may be empty [] — respect that!)
     locations = JSON.parse(_rawLoc);
 }
 
@@ -645,9 +661,9 @@ async function trackVisitor(lat, lng) {
     document.cookie = `${COOKIE_KEY}=1; expires=${expires}; path=/; SameSite=Lax`;
 
     // Visitor Count
-    let visitorCount = parseInt(localStorage.getItem('visitor_count') || '0');
-    visitorCount++;
-    localStorage.setItem('visitor_count', visitorCount.toString());
+    let vCount = parseInt(localStorage.getItem('visitor_count') || '0');
+    vCount++;
+    localStorage.setItem('visitor_count', vCount.toString());
 
     // Save visitor profile (unlimited history)
     const profile = {
@@ -823,8 +839,35 @@ function formatTime(time24) {
     return `${String(h12).padStart(2, '0')}:${m} ${suffix}`;
 }
 
-// Leaflet Location Found Handler
-map.on('locationfound', (e) => {
-    if (userMarker) map.removeLayer(userMarker);
-    userMarker = L.circle(e.latlng, { radius: 50, color: 'gold' }).addTo(map);
-});
+// --- Initialization ---
+window.onload = () => {
+    updateDate();
+    initMaps();
+    initTabs();
+    initGlobalNotice();
+    if (localStorage.getItem('admin_notice')) {
+        initGlobalNotice();
+    }
+    // Refresh prayer times every minute for countdown
+    setInterval(renderPrayerTimes, 60000);
+};
+
+// --- Global Notice System ---
+function initGlobalNotice() {
+    const notice = localStorage.getItem('admin_notice');
+    const container = document.getElementById('global-notification-bar');
+    if (notice && notice.trim() !== "" && container) {
+        container.innerHTML = `
+            <div class="notice-wrap">
+                <div class="notice-content">
+                    <i class="fas fa-bullhorn pulse-icon"></i>
+                    <marquee behavior="scroll" direction="left" scrollamount="6">${notice}</marquee>
+                </div>
+                <button class="notice-close" onclick="document.getElementById('global-notification-bar').style.display='none'">&times;</button>
+            </div>
+        `;
+        container.style.display = 'block';
+    } else if (container) {
+        container.style.display = 'none';
+    }
+}
