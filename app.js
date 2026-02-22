@@ -165,17 +165,20 @@ function checkForTimeAlerts() {
     const currentTime = `${currentH}:${currentM}`;
 
     const alerts = {
-        "Fajr": "ফজরের সময় হয়েছে",
-        "Dhuhr": "যোহরের সময় হয়েছে",
-        "Asr": "আসরের সময় হয়েছে",
-        "Maghrib": "ইফতারের সময় হয়েছে! মাগরিবের আযান।",
-        "Isha": "এশার সময় হয়েছে"
+        "Imsak": "সেহরির সময় শেষ হয়েছে। রোজা শুরু।",
+        "Fajr": "ফজরের সময় হয়েছে। নামাযের প্রস্তুতি নিন।",
+        "Dhuhr": "যোহরের সময় হয়েছে।",
+        "Asr": "আসরের সময় হয়েছে।",
+        "Maghrib": "আলহামদুলিল্লাহ, ইফতারের সময় হয়েছে! রোজা ভাঙুন।",
+        "Isha": "এশার সময় হয়েছে। তারাবিহ নামাযের প্রস্তুতি নিন।"
     };
 
     Object.keys(alerts).forEach(key => {
         if (prayerTimesData[key] === currentTime && !notificationSent[key + currentTime]) {
             sendNotification(alerts[key]);
             notificationSent[key + currentTime] = true;
+            // Also refresh stats/UI
+            renderPrayerTimes();
         }
     });
 }
@@ -222,28 +225,70 @@ function initTabs() {
 function initTimer() {
     if (!prayerTimesData) return;
 
+    const prayerMap = {
+        "Imsak": "সেহরি শেষ",
+        "Fajr": "ফজর",
+        "Dhuhr": "যোহর",
+        "Asr": "আসর",
+        "Maghrib": "ইফতার",
+        "Isha": "এশা"
+    };
+
     function updateCountdown() {
+        if (!prayerTimesData) return;
         const now = new Date();
-        const [mH, mM] = prayerTimesData.Maghrib.split(':');
+        const nowMins = now.getHours() * 60 + now.getMinutes();
 
-        const iftarTime = new Date();
-        iftarTime.setHours(parseInt(mH), parseInt(mM), 0);
+        // Find next prayer
+        let nextP = null;
+        let nextTime = null;
 
-        let diff = iftarTime - now;
+        const keys = Object.keys(prayerMap);
+        for (let key of keys) {
+            if (!prayerTimesData[key]) continue;
+            const [h, m] = prayerTimesData[key].split(':');
+            const pMins = parseInt(h) * 60 + parseInt(m);
+            if (pMins > nowMins) {
+                nextP = prayerMap[key];
+                nextTime = new Date();
+                nextTime.setHours(parseInt(h), parseInt(m), 0);
+                break;
+            }
+        }
 
-        if (diff < 0) {
-            document.getElementById('next-prayer-label').innerText = "ইফতার সম্পন্ন হয়েছে";
-            document.getElementById('iftar-timer').innerHTML = '<div class="time-block" style="width:100%"><span>আলহামদুলিল্লাহ</span></div>';
+        const labelEl = document.getElementById('next-prayer-label');
+        const timerEl = document.getElementById('iftar-timer');
+
+        // Check if it's Eid (Assume Ramadan 2026 ends around March 20)
+        const currentMonth = now.getMonth() + 1; // 1-12
+        const currentDay = now.getDate();
+        if ((currentMonth === 3 && currentDay >= 21) || currentMonth > 3) {
+            if (labelEl) labelEl.innerText = "ঈদ মোবারক!";
+            if (timerEl) timerEl.innerHTML = '<div class="time-block" style="width:100%"><span style="font-size:1.8rem; font-family:var(--font-bn)">পবিত্র ঈদুল ফিতর ২০২৬</span></div>';
             return;
         }
 
+        if (!nextP) {
+            if (labelEl) labelEl.innerText = "পরবর্তী নামাজের সময়";
+            if (timerEl) timerEl.innerHTML = '<div class="time-block" style="width:100%"><span>আগামীকাল</span></div>';
+            return;
+        }
+
+        let diff = nextTime - now;
         const h = Math.floor(diff / (1000 * 60 * 60));
         const m = Math.floor((diff / (1000 * 60)) % 60);
         const s = Math.floor((diff / 1000) % 60);
 
-        document.getElementById('hours').innerText = String(h).padStart(2, '0');
-        document.getElementById('mins').innerText = String(m).padStart(2, '0');
-        document.getElementById('secs').innerText = String(s).padStart(2, '0');
+        if (labelEl) labelEl.innerText = `${nextP} হতে বাকি:`;
+        if (timerEl) {
+            timerEl.innerHTML = `
+                <div class="time-block"><span id="hours">${String(h).padStart(2, '0')}</span><small>Hours</small></div>
+                <div class="time-divider">:</div>
+                <div class="time-block"><span id="mins">${String(m).padStart(2, '0')}</span><small>Mins</small></div>
+                <div class="time-divider">:</div>
+                <div class="time-block"><span id="secs">${String(s).padStart(2, '0')}</span><small>Secs</small></div>
+            `;
+        }
     }
 
     setInterval(updateCountdown, 1000);
@@ -748,9 +793,32 @@ function renderStats() {
 }
 
 function updateDate() {
+    const now = new Date();
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const dateStr = new Date().toLocaleDateString('bn-BD', options);
-    document.getElementById('today-date-bn').innerText = dateStr;
+    const dateStr = now.toLocaleDateString('bn-BD', options);
+
+    const dateEl = document.getElementById('today-date-bn');
+    if (dateEl) dateEl.innerText = dateStr;
+
+    // Eid Logic for header
+    const currentMonth = now.getMonth() + 1;
+    const currentDay = now.getDate();
+    const isEid = (currentMonth === 3 && currentDay >= 21) || currentMonth > 3;
+
+    if (isEid) {
+        document.body.classList.add('eid-mode');
+        document.querySelector('.brand-name').innerHTML = 'ঈদ <span>মোবারক</span>';
+        const noticeEl = document.getElementById('notice-container');
+        if (noticeEl && !noticeEl.innerHTML) {
+            noticeEl.innerHTML = `
+                <div class="glass-card" style="text-align:center; padding:20px; border:2px solid var(--accent-gold);">
+                    <h2 style="color:var(--accent-gold); margin-bottom:10px;">تقبل الله منا ومنكم</h2>
+                    <p>আপনাকে ও আপনার পরিবারকে পবিত্র ঈদুল ফিতরের শুভেচ্ছা। ঈদ মোবারক!</p>
+                </div>
+            `;
+        }
+    }
+
     renderPrayerTimes();
 }
 
@@ -768,9 +836,22 @@ function renderPrayerTimes() {
         return;
     }
 
-    // Build calendar header HTML
-    const options = { day: 'numeric', month: 'long', year: 'numeric' };
-    const gregDate = new Date().toLocaleDateString('bn-BD', options);
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentDay = now.getDate();
+    const isEid = (currentMonth === 3 && currentDay >= 21) || currentMonth > 3;
+
+    if (isEid) {
+        container.innerHTML = `
+            <div class="calendar-header" style="padding:40px 0;">
+                <i class="fas fa-moon gold-text" style="font-size:3rem; margin-bottom:15px;"></i>
+                <h2 style="color:var(--accent-gold);">ঈদ মোবারক ২০২৬</h2>
+                <p>রমজান সম্পন্ন হয়েছে। আল্লাহ সকলের রোজা ও ইবাদত কবুল করুন।</p>
+                <div style="margin-top:20px; font-size:1.2rem; color:white;">পবিত্র ঈদুল ফিতর ২০২৬</div>
+            </div>
+        `;
+        return;
+    }
 
     const prayerMap = {
         "Imsak": { label: "সেহরি (শেষ সময়)", icon: "fa-moon", highlight: true },
@@ -782,7 +863,6 @@ function renderPrayerTimes() {
     };
 
     // Check which prayer is next
-    const now = new Date();
     const nowMins = now.getHours() * 60 + now.getMinutes();
     let nextPrayerKey = null;
     let minDiff = Infinity;
