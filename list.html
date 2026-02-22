@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="bn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ইফতার ও বিরিয়ানি লিস্ট - বিরিয়ানি দিবে</title>
+    <meta name="description" content="আপনার এলাকায় বিনামূল্যে ইফতার বিতরণের সব তথ্য এক জায়গায়।">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Outfit:wght@300;400;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Page-specific overrides */
+        .page-hero {
+            background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #064e3b 100%);
+            padding: 30px 0 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--glass-border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 50%, rgba(251, 191, 36, 0.08) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .page-hero h1 {
+            font-size: 1.8rem;
+            color: var(--accent-gold);
+            margin-bottom: 6px;
+        }
+
+        .page-hero p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .back-btn {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: var(--font-bn);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Stats bar */
+        .stats-bar {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px 0;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .stats-bar .container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .stat-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .stat-pill strong {
+            color: var(--accent-gold);
+            font-family: var(--font-en);
+            font-size: 1.1rem;
+        }
+
+        /* Search & Filter bar */
+        .filter-section {
+            padding: 20px 0;
+            background: rgba(6, 78, 59, 0.3);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 12px 12px 42px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: white;
+            font-family: var(--font-bn);
+            font-size: 0.95rem;
+            margin-bottom: 0;
+        }
+
+        .search-box input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .filter-chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-family: var(--font-bn);
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .chip.active,
+        .chip:hover {
+            background: var(--accent-gold);
+            color: #064e3b;
+            border-color: var(--accent-gold);
+            font-weight: 600;
+        }
+
+        /* Location Grid */
+        .locations-section {
+            padding: 24px 0 60px;
+        }
+
+        .location-grid-2col {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        @media (min-width: 600px) {
+            .location-grid-2col {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 900px) {
+            .location-grid-2col {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* Enhanced Location Card */
+        .loc-card {
+            background: linear-gradient(145deg, #065f46 0%, #064e3b 100%);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: var(--shadow-premium);
+            transition: transform 0.25s, box-shadow 0.25s;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .loc-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent-gold);
+            opacity: 0.6;
+        }
+
+        .loc-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .loc-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            gap: 8px;
+        }
+
+        .loc-card-badges {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .food-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .food-badge.biryani {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .food-badge.kacchi {
+            background: rgba(217, 119, 6, 0.2);
+            color: #d97706;
+            border: 1px solid rgba(217, 119, 6, 0.3);
+        }
+
+        .food-badge.khichuri {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .food-badge.muri {
+            background: rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(96, 165, 250, 0.3);
+        }
+
+        .food-badge.others {
+            background: rgba(156, 163, 175, 0.2);
+            color: #9ca3af;
+            border: 1px solid rgba(156, 163, 175, 0.3);
+        }
+
+        .verified-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .loc-card h3 {
+            font-size: 1.1rem;
+            color: white;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .loc-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .loc-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .loc-meta-item i {
+            color: var(--accent-gold);
+            width: 14px;
+            text-align: center;
+        }
+
+        .loc-meta-item strong {
+            color: var(--text-light);
+        }
+
+        /* Confirm Actions */
+        .confirm-actions {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .confirm-btn {
+            flex: 1;
+            padding: 10px 8px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.04);
+            color: white;
+            font-family: var(--font-bn);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+
+        .confirm-btn.got-it {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+
+        .confirm-btn.got-it:hover {
+            background: rgba(16, 185, 129, 0.25);
+            transform: scale(1.02);
+        }
+
+        .confirm-btn.not-got {
+            background: rgba(239, 68, 68, 0.08);
+            border-color: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .confirm-btn.not-got:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .route-btn {
+            width: 100%;
+            padding: 11px;
+            background: rgba(251, 191, 36, 0.12);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: var(--accent-gold);
+            border-radius: 10px;
+            font-family: var(--font-bn);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        .route-btn:hover {
+            background: var(--accent-gold);
+            color: #064e3b;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            grid-column: 1/-1;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            color: var(--accent-gold);
+            opacity: 0.4;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        .empty-state p {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        /* Confirmation Modal */
+        .confirm-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 5000;
+            backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .confirm-modal-overlay.open {
+            display: flex;
+        }
+
+        .confirm-modal-box {
+            background: linear-gradient(145deg, #065f46, #064e3b);
+            border: 1px solid var(--accent-gold);
+            border-radius: 24px;
+            padding: 36px 28px;
+            max-width: 360px;
+            width: 90%;
+            text-align: center;
+            animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes popIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .confirm-modal-box .big-icon {
+            font-size: 3.5rem;
+            margin-bottom: 16px;
+        }
+
+        .confirm-modal-box h2 {
+            color: var(--accent-gold);
+            font-size: 1.4rem;
+            margin-bottom: 8px;
+        }
+
+        .confirm-modal-box p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            font-family: var(--font-bn);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-btn.primary {
+            background: var(--accent-gold);
+            color: #064e3b;
+        }
+
+        .modal-btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid var(--glass-border);
+        }
+
+        .modal-btn:hover {
+            opacity: 0.88;
+            transform: translateY(-1px);
+        }
+
+        /* FAB Add Button */
+        .fab {
+            position: fixed;
+            bottom: 28px;
+            right: 20px;
+            background: var(--accent-gold);
+            color: #064e3b;
+            border: none;
+            border-radius: 50px;
+            padding: 14px 22px;
+            font-family: var(--font-bn);
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(251, 191, 36, 0.45);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 1000;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .fab:hover {
+            transform: translateY(-3px) scale(1.04);
+            box-shadow: 0 12px 30px rgba(251, 191, 36, 0.5);
+        }
+
+        /* Toast */
+        #toast-container {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            width: calc(100% - 40px);
+            max-width: 380px;
+        }
+
+        .toast {
+            background: #1f2937;
+            color: white;
+            padding: 12px 18px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--accent-gold);
+            font-family: var(--font-bn);
+            animation: slideUp 0.3s ease-out;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast-success {
+            border-left-color: #10b981;
+        }
+
+        .toast-error {
+            border-left-color: #ef4444;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="stars-container"></div>
+
+    <!-- ===== Sticky Header with Navigation ===== -->
+    <header style="
+        background:rgba(6,78,59,0.95);
+        backdrop-filter:blur(14px);
+        -webkit-backdrop-filter:blur(14px);
+        border-bottom:1px solid var(--glass-border);
+        position:sticky; top:0; z-index:300;">
+
+        <!-- Brand Row -->
+        <div class="container"
+            style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;padding-bottom:12px;">
+            <a href="index.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:white;">
+                <i class="fas fa-moon" style="color:var(--accent-gold);font-size:1.1rem;"></i>
+                <span style="font-family:var(--font-en);font-weight:700;font-size:1.05rem;">বিরিয়ানি <span
+                        style="color:var(--accent-gold)">দিবে</span></span>
+            </a>
+            <button onclick="localStorage.setItem('open_add_modal','1'); window.location.href='index.html';" style="
+                background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);
+                color:var(--accent-gold);padding:7px 14px;border-radius:10px;
+                font-family:var(--font-bn);font-size:0.82rem;cursor:pointer;
+                display:flex;align-items:center;gap:6px;transition:all 0.2s;">
+                <i class="fas fa-plus-circle"></i> ইফতার যোগ করুন
+            </button>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="container" style="padding-bottom:12px;">
+            <div style="
+                display:flex;
+                background:rgba(0,0,0,0.3);
+                border-radius:12px;
+                padding:4px;
+                gap:4px;">
+
+                <a href="index.html" style="
+                    flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+                    padding:10px 4px;border-radius:9px;text-decoration:none;
+                    color:var(--text-muted);font-family:var(--font-bn);font-size:0.85rem;
+                    transition:all 0.25s;">
+                    <i class="fas fa-map-marked-alt"></i> ম্যাপ
+                </a>
+
+                <a href="list.html" style="
+                    flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+                    padding:10px 4px;border-radius:9px;text-decoration:none;
+                    background:var(--accent-gold);color:#064e3b;
+                    font-family:var(--font-bn);font-size:0.85rem;font-weight:700;
+                    box-shadow:0 4px 14px rgba(251,191,36,0.35);
+                    transition:all 0.25s;">
+                    <i class="fas fa-utensils"></i> ইফতার লিস্ট
+                </a>
+
+                <a href="prayer.html" style="
+                    flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+                    padding:10px 4px;border-radius:9px;text-decoration:none;
+                    color:var(--text-muted);font-family:var(--font-bn);font-size:0.85rem;
+                    transition:all 0.25s;">
+                    <i class="fas fa-mosque"></i> নামাজ
+                </a>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="container">
+            <div class="stat-pill"><i class="fas fa-map-marker-alt" style="color:var(--accent-gold)"></i> মোট স্পট:
+                <strong id="total-count">0</strong>
+            </div>
+            <div class="stat-pill"><i class="fas fa-check-circle" style="color:#10b981"></i> সক্রিয়: <strong
+                    id="active-count">0</strong></div>
+            <div class="stat-pill"><i class="fas fa-shield-alt" style="color:#60a5fa"></i> ভেরিফাইড: <strong
+                    id="verified-count">0</strong></div>
+        </div>
+    </div>
+
+
+    <!-- Filter Section -->
+    <div class="filter-section">
+        <div class="container">
+            <div class="filter-row">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="নাম বা এলাকা খুঁজুন..."
+                        oninput="filterLocations()">
+                </div>
+                <div class="filter-chips">
+                    <button class="chip active" data-food="all" onclick="setFoodFilter(this)">সব</button>
+                    <button class="chip" data-food="biryani" onclick="setFoodFilter(this)">🍛 বিরিয়ানি</button>
+                    <button class="chip" data-food="kacchi" onclick="setFoodFilter(this)">🍖 কাচ্চি</button>
+                    <button class="chip" data-food="khichuri" onclick="setFoodFilter(this)">🥘 খিচুড়ি</button>
+                    <button class="chip" data-food="muri" onclick="setFoodFilter(this)">🍚 মুড়ি</button>
+                    <button class="chip" data-food="others" onclick="setFoodFilter(this)">🍽️ অন্যান্য</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Locations Section -->
+    <section class="locations-section">
+        <div class="container">
+            <div class="location-grid-2col" id="location-grid">
+                <!-- Cards injected here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- FAB -->
+    <a href="index.html#add" class="fab" onclick="openAddModal()">
+        <i class="fas fa-plus"></i> নতুন যোগ করুন
+    </a>
+
+    <!-- Confirmation Modal (পেয়েছি OK page) -->
+    <div class="confirm-modal-overlay" id="confirm-overlay">
+        <div class="confirm-modal-box">
+            <div class="big-icon" id="confirm-icon">✅</div>
+            <h2 id="confirm-title">আলহামদুলিল্লাহ!</h2>
+            <p id="confirm-msg">আপনার তথ্য নিশ্চিত হয়েছে। জাযাকাল্লাহ খাইর।</p>
+            <div class="modal-btns">
+                <button class="modal-btn secondary" onclick="closeConfirmModal()">বন্ধ করুন</button>
+                <button class="modal-btn primary" id="confirm-action-btn" onclick="closeConfirmModal()">ঠিক আছে</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast-container"></div>
+
+    <script>
+        // --- Data ---
+        let locations = JSON.parse(localStorage.getItem('iftar_locations') || '[]');
+        if (!locations.length) {
+            locations = [
+                { id: 1, orgName: "বায়তুল মোকাররম জাতীয় মসজিদ", foodType: "biryani", time: "18:15", quantity: 500, lat: 23.7297, lng: 90.4121, status: "active", verified: true, confirmations: 45, reports: 0 },
+                { id: 2, orgName: "ফার্মগেট মসজিদ", foodType: "khichuri", time: "18:20", quantity: 200, lat: 23.7561, lng: 90.3892, status: "active", verified: false, confirmations: 12, reports: 1 }
+            ];
+            localStorage.setItem('iftar_locations', JSON.stringify(locations));
+        }
+
+        let activeFoodFilter = 'all';
+
+        const foodLabels = { biryani: '🍛 বিরিয়ানি', kacchi: '🍖 কাচ্চি', khichuri: '🥘 খিচুড়ি', muri: '🍚 মুড়ি', others: '🍽️ অন্যান্য' };
+
+        // --- Render ---
+        function renderStats() {
+            document.getElementById('total-count').textContent = locations.length;
+            document.getElementById('active-count').textContent = locations.filter(l => l.status === 'active').length;
+            document.getElementById('verified-count').textContent = locations.filter(l => l.verified).length;
+        }
+
+        function setFoodFilter(btn) {
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            activeFoodFilter = btn.dataset.food;
+            filterLocations();
+        }
+
+        function filterLocations() {
+            const q = document.getElementById('search-input').value.toLowerCase();
+            const grid = document.getElementById('location-grid');
+            grid.innerHTML = '';
+
+            const filtered = locations.filter(loc => {
+                const matchFood = activeFoodFilter === 'all' || loc.foodType === activeFoodFilter;
+                const matchSearch = !q || loc.orgName.toLowerCase().includes(q);
+                return matchFood && matchSearch;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-search-minus"></i>
+                        <p>কোনো ইফতার স্পট পাওয়া যায়নি।<br>ফিল্টার পরিবর্তন করে আবার চেষ্টা করুন।</p>
+                    </div>`;
+                return;
+            }
+
+            filtered.forEach(loc => {
+                const card = createCard(loc);
+                grid.appendChild(card);
+            });
+        }
+
+        function createCard(loc) {
+            const div = document.createElement('div');
+            div.className = 'loc-card';
+            div.innerHTML = `
+                <div class="loc-card-top">
+                    <div class="loc-card-badges">
+                        <span class="food-badge ${loc.foodType}">${foodLabels[loc.foodType] || loc.foodType}</span>
+                        ${loc.verified ? '<span class="verified-badge"><i class="fas fa-check-circle"></i> ভেরিফাইড</span>' : ''}
+                    </div>
+                    ${loc.status !== 'active' ? '<span style="font-size:0.7rem;color:#ef4444;"><i class="fas fa-clock"></i> পেন্ডিং</span>' : ''}
+                </div>
+                <h3>${loc.orgName}</h3>
+                <div class="loc-meta">
+                    <div class="loc-meta-item"><i class="fas fa-clock"></i> <span>সময়: <strong>${loc.time}</strong></span></div>
+                    <div class="loc-meta-item"><i class="fas fa-users"></i> <span>পরিমাণ: <strong>${loc.quantity || 'অজানা'} জন</strong></span></div>
+                </div>
+                <div class="confirm-actions">
+                    <button class="confirm-btn got-it" onclick="confirmGot(${loc.id}, event)">
+                        <i class="fas fa-thumbs-up"></i> পেয়েছি <span id="got-${loc.id}">(${loc.confirmations})</span>
+                    </button>
+                    <button class="confirm-btn not-got" onclick="confirmNotGot(${loc.id}, event)">
+                        <i class="fas fa-thumbs-down"></i> পাইনি <span id="notgot-${loc.id}">(${loc.reports})</span>
+                    </button>
+                </div>
+                <button class="route-btn" onclick="goToMap(${loc.lat}, ${loc.lng})">
+                    <i class="fas fa-directions"></i> গুগল ম্যাপে রাস্তা দেখুন
+                </button>
+            `;
+            return div;
+        }
+
+        // --- Confirm Got (পেয়েছি) ---
+        function confirmGot(id, e) {
+            e.stopPropagation();
+            const loc = locations.find(l => l.id === id);
+            if (!loc) return;
+            loc.confirmations++;
+            localStorage.setItem('iftar_locations', JSON.stringify(locations));
+
+            // Update counter inline
+            const el = document.getElementById('got-' + id);
+            if (el) el.textContent = `(${loc.confirmations})`;
+
+            // Show thank-you modal
+            document.getElementById('confirm-icon').textContent = '✅';
+            document.getElementById('confirm-title').textContent = 'আলহামদুলিল্লাহ!';
+            document.getElementById('confirm-msg').textContent = `আপনি নিশ্চিত করেছেন যে "${loc.orgName}" তে ইফতার পেয়েছেন। আল্লাহ কবুল করুন।`;
+            document.getElementById('confirm-action-btn').textContent = 'ঠিক আছে';
+            document.getElementById('confirm-overlay').classList.add('open');
+        }
+
+        // --- Confirm Not Got (পাইনি) ---
+        function confirmNotGot(id, e) {
+            e.stopPropagation();
+            const loc = locations.find(l => l.id === id);
+            if (!loc) return;
+            loc.reports++;
+            localStorage.setItem('iftar_locations', JSON.stringify(locations));
+
+            const el = document.getElementById('notgot-' + id);
+            if (el) el.textContent = `(${loc.reports})`;
+
+            document.getElementById('confirm-icon').textContent = '😔';
+            document.getElementById('confirm-title').textContent = 'দুঃখিত!';
+            document.getElementById('confirm-msg').textContent = `"${loc.orgName}" তে ইফতার না পাওয়ার তথ্য রিপোর্ট করা হয়েছে। আমরা যাচাই করব।`;
+            document.getElementById('confirm-action-btn').textContent = 'ঠিক আছে';
+            document.getElementById('confirm-overlay').classList.add('open');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-overlay').classList.remove('open');
+        }
+
+        // --- Map go ---
+        function goToMap(lat, lng) {
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+        }
+
+        function openAddModal() {
+            localStorage.setItem('open_add_modal', '1');
+        }
+
+        // --- Toast ---
+        function showToast(msg, type = 'info') {
+            const c = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = `toast toast-${type}`;
+            t.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'info-circle'}"></i> ${msg}`;
+            c.appendChild(t);
+            setTimeout(() => t.remove(), 3500);
+        }
+
+        // --- Init ---
+        renderStats();
+        filterLocations();
+    </script>
+
+    <!-- Bottom Nav -->
+    <nav style="
+        position:fixed; bottom:0; left:0; width:100%;
+        background:rgba(6,78,59,0.97); backdrop-filter:blur(12px);
+        border-top:1px solid var(--glass-border);
+        display:flex; z-index:500;">
+        <a href="index.html"
+            style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;gap:4px;text-decoration:none;color:var(--text-muted);font-size:0.7rem;font-family:var(--font-bn);transition:color 0.2s;">
+            <i class="fas fa-map-marked-alt" style="font-size:1.1rem;"></i> ম্যাপ
+        </a>
+        <a href="list.html"
+            style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;gap:4px;text-decoration:none;color:var(--accent-gold);font-size:0.7rem;font-family:var(--font-bn);">
+            <i class="fas fa-utensils" style="font-size:1.1rem;filter:drop-shadow(0 0 4px rgba(251,191,36,0.5));"></i>
+            ইফতার লিস্ট
+        </a>
+        <a href="prayer.html"
+            style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;gap:4px;text-decoration:none;color:var(--text-muted);font-size:0.7rem;font-family:var(--font-bn);transition:color 0.2s;">
+            <i class="fas fa-mosque" style="font-size:1.1rem;"></i> নামাজ
+        </a>
+    </nav>
+</body>
+
+</html>

@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="bn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>নামাজের সময়সূচি - বিরিয়ানি দিবে</title>
+    <meta name="description" content="আপনার অবস্থান অনুযায়ী আজকের নামাজের সঠিক সময়সূচি।">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Outfit:wght@300;400;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* ===== Page Layout ===== */
+        .page-header {
+            background: rgba(6, 78, 59, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 14px 0;
+            position: sticky;
+            top: 0;
+            z-index: 200;
+        }
+
+        .page-header .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .back-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            text-decoration: none;
+            font-size: 0.9rem;
+            padding: 8px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.07);
+            transition: all 0.2s;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .page-title-area {
+            text-align: center;
+        }
+
+        .page-title-area h1 {
+            font-size: 1.1rem;
+            color: var(--accent-gold);
+        }
+
+        .page-title-area small {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* ===== Hero Countdown ===== */
+        .prayer-hero {
+            padding: 28px 0 18px;
+            text-align: center;
+        }
+
+        .next-prayer-card {
+            background: linear-gradient(135deg, #065f46 0%, #086850 50%, #064e3b 100%);
+            border-radius: 24px;
+            padding: 28px 20px;
+            border: 1px solid rgba(251, 191, 36, 0.25);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(251, 191, 36, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .next-prayer-card::before {
+            content: '';
+            position: absolute;
+            top: -60px;
+            right: -60px;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(251, 191, 36, 0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .next-prayer-card .label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .next-prayer-card .prayer-name-big {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+            margin-bottom: 18px;
+        }
+
+        .countdown-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--font-en);
+        }
+
+        .cd-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .cd-block span {
+            font-size: 2.8rem;
+            font-weight: 700;
+            line-height: 1;
+            color: white;
+        }
+
+        .cd-block small {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .cd-sep {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+            margin-bottom: 16px;
+        }
+
+        .remaining-label {
+            margin-top: 14px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .remaining-label strong {
+            color: var(--accent-gold);
+        }
+
+        /* ===== Location Bar ===== */
+        .location-bar {
+            background: rgba(0, 0, 0, 0.2);
+            border-top: 1px solid var(--glass-border);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 10px 0;
+        }
+
+        .location-bar .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .location-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .location-info i {
+            color: var(--accent-gold);
+        }
+
+        .location-info strong {
+            color: white;
+        }
+
+        .refresh-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(251, 191, 36, 0.12);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: var(--accent-gold);
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-family: var(--font-bn);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .refresh-btn:hover {
+            background: var(--accent-gold);
+            color: #064e3b;
+        }
+
+        /* ===== Prayer List ===== */
+        .prayer-list-section {
+            padding: 24px 0 80px;
+        }
+
+        .section-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .prayer-cards-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .p-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 18px 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .p-card::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 3px;
+            height: 100%;
+            background: transparent;
+            border-radius: 0 2px 2px 0;
+            transition: background 0.3s;
+        }
+
+        .p-card.highlight::after {
+            background: var(--accent-gold);
+        }
+
+        .p-card.next-up::after {
+            background: #10b981;
+        }
+
+        .p-card.highlight {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+            border-color: rgba(251, 191, 36, 0.25);
+        }
+
+        .p-card.next-up {
+            background: linear-gradient(135deg, var(--accent-gold) 0%, #f59e0b 100%);
+            border: none;
+            box-shadow: 0 10px 30px rgba(251, 191, 36, 0.3);
+            transform: scale(1.02);
+        }
+
+        .p-card.next-up .p-icon {
+            background: rgba(6, 78, 59, 0.3);
+            color: #064e3b;
+        }
+
+        .p-card.next-up .p-name {
+            color: #064e3b;
+        }
+
+        .p-card.next-up .p-time {
+            color: #064e3b;
+        }
+
+        .p-card.next-up .p-sublabel {
+            color: rgba(6, 78, 59, 0.7);
+        }
+
+        .p-card.done {
+            opacity: 0.5;
+        }
+
+        .p-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            background: rgba(251, 191, 36, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 1.2rem;
+            color: var(--accent-gold);
+        }
+
+        .p-info {
+            flex: 1;
+        }
+
+        .p-name {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 2px;
+        }
+
+        .p-sublabel {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .p-right {
+            text-align: right;
+        }
+
+        .p-time {
+            font-family: var(--font-en);
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+            display: block;
+        }
+
+        .p-card.next-up .p-time {
+            color: #064e3b;
+        }
+
+        .next-tag {
+            display: inline-block;
+            background: #064e3b;
+            color: var(--accent-gold);
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 3px;
+            letter-spacing: 0.5px;
+        }
+
+        .done-tag {
+            display: inline-block;
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            margin-top: 3px;
+        }
+
+        /* ===== Date Card ===== */
+        .date-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .date-card .d-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+
+        .date-card .d-val {
+            font-size: 1rem;
+            color: white;
+            font-weight: 500;
+        }
+
+        .date-card .d-divider {
+            width: 1px;
+            height: 36px;
+            background: var(--glass-border);
+        }
+
+        /* ===== Loading ===== */
+        .loading-state {
+            text-align: center;
+            padding: 50px 20px;
+        }
+
+        .spinner {
+            width: 44px;
+            height: 44px;
+            border: 3px solid rgba(251, 191, 36, 0.15);
+            border-top-color: var(--accent-gold);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-state p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+        }
+
+        .loading-state small {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        /* ===== Notification Toggle ===== */
+        .notif-banner {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.12), rgba(251, 191, 36, 0.05));
+            border: 1px solid rgba(251, 191, 36, 0.25);
+            border-radius: 14px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .notif-banner .n-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .notif-banner i {
+            color: var(--accent-gold);
+            font-size: 1.1rem;
+        }
+
+        .notif-banner p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+
+        .notif-banner strong {
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .notif-toggle-btn {
+            background: var(--accent-gold);
+            color: #064e3b;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-family: var(--font-bn);
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .notif-toggle-btn:hover {
+            background: #f59e0b;
+        }
+
+        /* ===== Toast ===== */
+        #toast-container {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9000;
+            width: calc(100% - 40px);
+            max-width: 380px;
+        }
+
+        .toast {
+            background: #1f2937;
+            color: white;
+            padding: 12px 18px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--accent-gold);
+            font-family: var(--font-bn);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideUp2 0.3s ease-out;
+        }
+
+        .toast-success {
+            border-left-color: #10b981;
+        }
+
+        .toast-error {
+            border-left-color: #ef4444;
+        }
+
+        @keyframes slideUp2 {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* ===== Bottom Nav ===== */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(6, 78, 59, 0.95);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            z-index: 500;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            gap: 4px;
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            font-family: var(--font-bn);
+            transition: all 0.2s;
+        }
+
+        .nav-item.active,
+        .nav-item:hover {
+            color: var(--accent-gold);
+        }
+
+        .nav-item i {
+            font-size: 1.1rem;
+        }
+
+        .nav-item.active i {
+            filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.5));
+        }
+    </style>
+</head>
+
+<body>
+    <div class="stars-container"></div>
+
+    <!-- ===== Sticky Header with Navigation ===== -->
+    <header style="
+        background:rgba(6,78,59,0.95);
+        backdrop-filter:blur(14px);
+        -webkit-backdrop-filter:blur(14px);
+        border-bottom:1px solid var(--glass-border);
+        position:sticky; top:0; z-index:300;">
+
+        <!-- Brand Row -->
+        <div class="container"
+            style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;padding-bottom:12px;">
+            <a href="index.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:white;">
+                <i class="fas fa-moon" style="color:var(--accent-gold);font-size:1.1rem;"></i>
+                <span style="font-family:var(--font-en);font-weight:700;font-size:1.05rem;">বিরিয়ানি <span
+                        style="color:var(--accent-gold)">দিবে</span></span>
+            </a>
+            <div style="font-size:0.8rem;color:var(--text-muted);" id="header-date">লোড হচ্ছে...</div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="container" style="padding-bottom:12px;">
+            <div style="
+                display:flex;
+                background:rgba(0,0,0,0.3);
+                border-radius:12px;
+                padding:4px;
+                gap:4px;">
+
+                <a href="index.html" style="
+                    flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+                    padding:10px 4px;border-radius:9px;text-decoration:none;
+                    color:var(--text-muted);font-family:var(--font-bn);font-size:0.85rem;
+                    transition:all 0.25s;">
+                    <i class="fas fa-map-marked-alt"></i> ম্যাপ
+                </a>
+
+                <a href="list.html" style="
+                    flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+                    padding:10px 4px;border-radius:9px;text-decoration:none;
+                    color:var(--text-muted);font-family:var(--font-bn);font-size:0.85rem;
+                    transition:all 0.25s;">
+                    <i class="fas fa-utensils"></i> ইফতার লিস্ট
+                </a>
+
+                <a href="prayer.html" style="
+                    flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+                    padding:10px 4px;border-radius:9px;text-decoration:none;
+                    background:var(--accent-gold);color:#064e3b;
+                    font-family:var(--font-bn);font-size:0.85rem;font-weight:700;
+                    box-shadow:0 4px 14px rgba(251,191,36,0.35);
+                    transition:all 0.25s;">
+                    <i class="fas fa-mosque"></i> নামাজ
+                </a>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero: Next Prayer Countdown -->
+    <section class="prayer-hero">
+        <div class="container">
+            <div class="next-prayer-card" id="next-prayer-card">
+                <p class="label">পরবর্তী নামাজ</p>
+                <div class="prayer-name-big" id="next-prayer-name">লোড হচ্ছে...</div>
+                <div class="countdown-row">
+                    <div class="cd-block">
+                        <span id="cd-h">--</span>
+                        <small>ঘণ্টা</small>
+                    </div>
+                    <div class="cd-sep">:</div>
+                    <div class="cd-block">
+                        <span id="cd-m">--</span>
+                        <small>মিনিট</small>
+                    </div>
+                    <div class="cd-sep">:</div>
+                    <div class="cd-block">
+                        <span id="cd-s">--</span>
+                        <small>সেকেন্ড</small>
+                    </div>
+                </div>
+                <p class="remaining-label">আর বাকি আছে — সময়মতো প্রস্তুত থাকুন</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Location Bar -->
+    <div class="location-bar">
+        <div class="container">
+            <div class="location-info">
+                <i class="fas fa-map-marker-alt"></i>
+                <div>
+                    <div style="font-size:0.72rem; color:var(--text-muted)">আপনার অবস্থান</div>
+                    <strong id="location-label">নির্ধারণ হচ্ছে...</strong>
+                </div>
+            </div>
+            <button class="refresh-btn" onclick="reloadLocation()">
+                <i class="fas fa-sync-alt"></i> আপডেট
+            </button>
+        </div>
+    </div>
+
+    <!-- Prayer List -->
+    <section class="prayer-list-section">
+        <div class="container">
+
+            <!-- Date Info -->
+            <div class="date-card">
+                <div>
+                    <div class="d-label">আজকের তারিখ</div>
+                    <div class="d-val" id="date-bn">—</div>
+                </div>
+                <div class="d-divider"></div>
+                <div>
+                    <div class="d-label">হিজরি</div>
+                    <div class="d-val" id="date-hijri">—</div>
+                </div>
+                <div class="d-divider"></div>
+                <div style="text-align:right">
+                    <div class="d-label">পদ্ধতি</div>
+                    <div class="d-val">Islamic Society</div>
+                </div>
+            </div>
+
+            <!-- Notification Banner -->
+            <div class="notif-banner" id="notif-banner">
+                <div class="n-left">
+                    <i class="fas fa-bell"></i>
+                    <div>
+                        <strong>নামাজের নোটিফিকেশন</strong>
+                        <p>প্রতিটি নামাজের সময় আলার্ট পান</p>
+                    </div>
+                </div>
+                <button class="notif-toggle-btn" id="notif-btn" onclick="requestNotif()">
+                    অন করুন
+                </button>
+            </div>
+
+            <!-- Loading / Prayer Cards -->
+            <p class="section-label">আজকের সময়সূচি</p>
+            <div id="prayer-loading" class="loading-state">
+                <div class="spinner"></div>
+                <p>নামাজের সময় আনা হচ্ছে...</p>
+                <small>লোকেশন পারমিশন দিলে দ্রুত হবে</small>
+            </div>
+            <div class="prayer-cards-grid" id="prayer-cards">
+                <!-- Injected by JS -->
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item">
+            <i class="fas fa-map-marked-alt"></i> ম্যাপ
+        </a>
+        <a href="list.html" class="nav-item">
+            <i class="fas fa-utensils"></i> ইফতার লিস্ট
+        </a>
+        <a href="prayer.html" class="nav-item active">
+            <i class="fas fa-mosque"></i> নামাজ
+        </a>
+    </nav>
+
+    <!-- Toast -->
+    <div id="toast-container"></div>
+
+    <script>
+        // ============================================================
+        //  Data
+        // ============================================================
+        const PRAYERS = [
+            { key: 'Imsak', label: 'সেহরি', sub: 'শেষ সময়', icon: '🌙', cls: 'highlight' },
+            { key: 'Fajr', label: 'ফজর', sub: 'ফরজ নামাজ', icon: '⭐', cls: '' },
+            { key: 'Sunrise', label: 'সূর্যোদয়', sub: 'সুন্নত শেষ সময়', icon: '🌅', cls: '' },
+            { key: 'Dhuhr', label: 'যোহর', sub: 'ফরজ নামাজ', icon: '☀️', cls: '' },
+            { key: 'Asr', label: 'আসর', sub: 'ফরজ নামাজ', icon: '🌤️', cls: '' },
+            { key: 'Maghrib', label: 'মাগরিব (ইফতার)', sub: 'ইফতারের সময়', icon: '🍽️', cls: 'highlight' },
+            { key: 'Isha', label: 'এশা ও তারাবি', sub: 'ফরজ ও নফল', icon: '🕌', cls: '' },
+        ];
+
+        let timingsData = null;
+        let nextKey = null;
+        let countdownInterval = null;
+
+        // ============================================================
+        //  Init
+        // ============================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            updateDates();
+            checkNotifPermission();
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(gotPosition, useDefault, { timeout: 8000 });
+            } else {
+                useDefault();
+            }
+        });
+
+        function gotPosition(pos) {
+            const { latitude: lat, longitude: lng } = pos.coords;
+            document.getElementById('location-label').textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            fetchTimes(lat, lng);
+        }
+
+        function useDefault() {
+            document.getElementById('location-label').textContent = 'ঢাকা (ডিফল্ট)';
+            fetchTimes(23.8103, 90.4125);
+        }
+
+        function reloadLocation() {
+            document.getElementById('location-label').textContent = 'নির্ধারণ হচ্ছে...';
+            document.getElementById('prayer-cards').innerHTML = '';
+            document.getElementById('prayer-loading').style.display = 'block';
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(gotPosition, useDefault, { timeout: 8000 });
+            } else { useDefault(); }
+        }
+
+        // ============================================================
+        //  API
+        // ============================================================
+        async function fetchTimes(lat, lng) {
+            try {
+                const date = new Date().toLocaleDateString('en-GB').split('/').reverse().join('-');
+                const res = await fetch(`https://api.aladhan.com/v1/timings/${date}?latitude=${lat}&longitude=${lng}&method=2`);
+                const data = await res.json();
+
+                if (data.code === 200) {
+                    timingsData = data.data.timings;
+                    const hijri = data.data.date.hijri;
+                    document.getElementById('date-hijri').textContent =
+                        `${hijri.day} ${hijri.month.en} ${hijri.year}`;
+
+                    document.getElementById('prayer-loading').style.display = 'none';
+                    renderCards();
+                    startCountdown();
+                } else {
+                    showError();
+                }
+            } catch {
+                showError();
+            }
+        }
+
+        function showError() {
+            document.getElementById('prayer-loading').innerHTML = `
+            <i class="fas fa-exclamation-circle" style="font-size:2.5rem;color:#ef4444;margin-bottom:12px;"></i>
+            <p style="color:#ef4444">সময় লোড হয়নি</p>
+            <small>ইন্টারনেট সংযোগ চেক করুন</small>
+            <br><br>
+            <button onclick="reloadLocation()" style="
+                background:var(--accent-gold);color:#064e3b;border:none;
+                padding:10px 20px;border-radius:10px;font-family:var(--font-bn);
+                font-size:0.9rem;cursor:pointer;font-weight:700;">
+                আবার চেষ্টা করুন
+            </button>`;
+        }
+
+        // ============================================================
+        //  Render Cards
+        // ============================================================
+        function renderCards() {
+            if (!timingsData) return;
+            const now = new Date();
+            const nowMins = now.getHours() * 60 + now.getMinutes();
+
+            // Find next prayer
+            nextKey = null;
+            let minDiff = Infinity;
+            PRAYERS.forEach(p => {
+                const t = timingsData[p.key];
+                if (!t) return;
+                const [h, m] = t.split(':');
+                const pMins = parseInt(h) * 60 + parseInt(m);
+                const diff = pMins - nowMins;
+                if (diff > 0 && diff < minDiff) {
+                    minDiff = diff;
+                    nextKey = p.key;
+                }
+            });
+
+            const grid = document.getElementById('prayer-cards');
+            grid.innerHTML = '';
+
+            PRAYERS.forEach(p => {
+                const t = timingsData[p.key];
+                if (!t) return;
+                const [h, m] = t.split(':');
+                const pMins = parseInt(h) * 60 + parseInt(m);
+                const isPast = (pMins - nowMins) < 0;
+                const isNext = p.key === nextKey;
+
+                const card = document.createElement('div');
+                card.className = `p-card ${isNext ? 'next-up' : (p.cls || '')} ${isPast && !isNext ? 'done' : ''}`;
+                card.id = 'pc-' + p.key;
+
+                card.innerHTML = `
+                <div class="p-icon">${p.icon}</div>
+                <div class="p-info">
+                    <div class="p-name">${p.label}</div>
+                    <div class="p-sublabel">${p.sub}</div>
+                </div>
+                <div class="p-right">
+                    <span class="p-time">${formatTime(t)}</span>
+                    ${isNext ? '<span class="next-tag">পরবর্তী</span>' : ''}
+                    ${isPast && !isNext ? '<span class="done-tag"><i class="fas fa-check"></i> হয়ে গেছে</span>' : ''}
+                </div>
+            `;
+                grid.appendChild(card);
+            });
+
+            // Update next prayer name in hero
+            if (nextKey) {
+                const np = PRAYERS.find(p => p.key === nextKey);
+                document.getElementById('next-prayer-name').textContent = np ? np.label : '—';
+            } else {
+                document.getElementById('next-prayer-name').textContent = 'সব নামাজ হয়ে গেছে';
+            }
+        }
+
+        // ============================================================
+        //  Countdown
+        // ============================================================
+        function startCountdown() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            tickCountdown();
+            countdownInterval = setInterval(tickCountdown, 1000);
+        }
+
+        function tickCountdown() {
+            if (!timingsData || !nextKey) {
+                document.getElementById('cd-h').textContent = '--';
+                document.getElementById('cd-m').textContent = '--';
+                document.getElementById('cd-s').textContent = '--';
+                return;
+            }
+            const now = new Date();
+            const t = timingsData[nextKey];
+            const [h, m] = t.split(':');
+            const target = new Date();
+            target.setHours(parseInt(h), parseInt(m), 0, 0);
+            const diff = target - now;
+
+            if (diff <= 0) {
+                // Re-render to find new next prayer
+                renderCards();
+                return;
+            }
+            const rh = Math.floor(diff / 3600000);
+            const rm = Math.floor((diff % 3600000) / 60000);
+            const rs = Math.floor((diff % 60000) / 1000);
+
+            document.getElementById('cd-h').textContent = String(rh).padStart(2, '0');
+            document.getElementById('cd-m').textContent = String(rm).padStart(2, '0');
+            document.getElementById('cd-s').textContent = String(rs).padStart(2, '0');
+        }
+
+        // ============================================================
+        //  Dates
+        // ============================================================
+        function updateDates() {
+            const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const opts2 = { day: 'numeric', month: 'short', year: 'numeric' };
+            document.getElementById('date-bn').textContent = new Date().toLocaleDateString('bn-BD', opts2);
+            document.getElementById('header-date').textContent = new Date().toLocaleDateString('bn-BD', opts);
+        }
+
+        // ============================================================
+        //  Notifications
+        // ============================================================
+        function checkNotifPermission() {
+            if (!('Notification' in window)) {
+                document.getElementById('notif-banner').style.display = 'none';
+                return;
+            }
+            if (Notification.permission === 'granted') {
+                document.getElementById('notif-btn').textContent = '✅ চালু আছে';
+                document.getElementById('notif-btn').style.background = '#10b981';
+            }
+        }
+
+        function requestNotif() {
+            if (!('Notification' in window)) return;
+            Notification.requestPermission().then(perm => {
+                if (perm === 'granted') {
+                    document.getElementById('notif-btn').textContent = '✅ চালু আছে';
+                    document.getElementById('notif-btn').style.background = '#10b981';
+                    showToast('নোটিফিকেশন চালু হয়েছে!', 'success');
+                } else {
+                    showToast('পারমিশন দেওয়া হয়নি', 'error');
+                }
+            });
+        }
+
+        // ============================================================
+        //  Helpers
+        // ============================================================
+        function formatTime(t24) {
+            const [h, m] = t24.split(':');
+            const hours = parseInt(h);
+            const sfx = hours >= 12 ? 'PM' : 'AM';
+            const h12 = hours % 12 || 12;
+            return `${String(h12).padStart(2, '0')}:${m} ${sfx}`;
+        }
+
+        function showToast(msg, type = 'info') {
+            const c = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = `toast toast-${type}`;
+            const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'info-circle';
+            t.innerHTML = `<i class="fas fa-${icon}"></i> ${msg}`;
+            c.appendChild(t);
+            setTimeout(() => t.remove(), 3500);
+        }
+    </script>
+</body>
+
+</html>

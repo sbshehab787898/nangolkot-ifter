@@ -1,0 +1,755 @@
+:root {
+    --primary-dark: #064e3b;
+    /* Deep Emerald Green */
+    --accent-gold: #fbbf24;
+    /* Amber Gold */
+    --accent-gold-hover: #f59e0b;
+    --text-light: #f3f4f6;
+    --text-muted: #9ca3af;
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --card-bg: #065f46;
+    --success: #10b981;
+    --danger: #ef4444;
+    --pending: #f59e0b;
+    --font-bn: 'Hind Siliguri', sans-serif;
+    --font-en: 'Outfit', sans-serif;
+    --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    background-color: #022c22;
+    color: var(--text-light);
+    font-family: var(--font-bn);
+    line-height: 1.6;
+    overflow-x: hidden;
+    min-height: 100vh;
+}
+
+.container {
+    width: 100%;
+    max-width: 1000px;
+    /* Increased for desktop */
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+/* For mobile views, keep it tight */
+@media (max-width: 768px) {
+    .container {
+        max-width: 600px;
+    }
+}
+
+/* Developer Credit */
+.dev-credit {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--glass-border);
+    font-size: 0.85rem;
+}
+
+.dev-credit a {
+    color: var(--accent-gold);
+    text-decoration: none;
+    font-weight: 700;
+}
+
+/* Custom Marker Styles */
+.custom-div-icon {
+    position: relative;
+    text-align: center;
+}
+
+.marker-pin {
+    width: 30px;
+    height: 30px;
+    border-radius: 50% 50% 50% 0;
+    position: absolute;
+    transform: rotate(-45deg);
+    left: 50%;
+    top: 50%;
+    margin: -15px 0 0 -15px;
+    border: 2px solid white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.custom-div-icon i {
+    position: absolute;
+    width: 30px;
+    font-size: 14px;
+    color: white;
+    left: 0;
+    top: 6px;
+    z-index: 10;
+}
+
+/* List Item Styles */
+.location-card {
+    background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: var(--shadow-premium);
+}
+
+.location-card h3 {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    color: var(--accent-gold);
+}
+
+.location-card p {
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+/* Prayer Times Notification Badge */
+.prayer-item.active {
+    background: var(--accent-gold);
+    color: var(--primary-dark);
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+}
+
+.prayer-item.active .prayer-name {
+    color: var(--primary-dark);
+}
+
+/* Visitor Counter in Admin */
+.visitor-stat {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Responsive Grid for Desktop */
+@media (min-width: 769px) {
+    .main-grid-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+    }
+
+    .hero-section .container {
+        max-width: 800px;
+    }
+
+    .content-tabs .container {
+        max-width: 1000px;
+    }
+}
+
+/* Background Stars */
+.stars-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background: radial-gradient(circle at center, #064e3b 0%, #022c22 100%);
+    overflow: hidden;
+}
+
+.stars-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image:
+        radial-gradient(1px 1px at 20px 30px, #fff, rgba(0, 0, 0, 0)),
+        radial-gradient(1px 1px at 40px 70px, #fff, rgba(0, 0, 0, 0)),
+        radial-gradient(2px 2px at 50px 160px, #fff, rgba(0, 0, 0, 0)),
+        radial-gradient(2px 2px at 90px 40px, #fff, rgba(0, 0, 0, 0)),
+        radial-gradient(1px 1px at 130px 80px, #fff, rgba(0, 0, 0, 0));
+    background-size: 200px 200px;
+    opacity: 0.3;
+}
+
+/* Typography Helpers */
+.gold-text {
+    color: var(--accent-gold);
+}
+
+.brand-name {
+    font-family: var(--font-en);
+    font-weight: 700;
+    color: #fff;
+}
+
+.brand-name span {
+    color: var(--accent-gold);
+}
+
+/* Header */
+.main-header {
+    background: rgba(6, 78, 59, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--glass-border);
+    padding: 12px 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.main-header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.2rem;
+}
+
+/* Hero & Countdown */
+.hero-section {
+    padding: 24px 0;
+}
+
+.countdown-card {
+    background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+    border-radius: 24px;
+    padding: 30px 20px;
+    text-align: center;
+    position: relative;
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-premium);
+    overflow: hidden;
+}
+
+.crescent-bg {
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 120px;
+    opacity: 0.2;
+    z-index: 0;
+    pointer-events: none;
+}
+
+#hero-moon {
+    width: 100%;
+    filter: drop-shadow(0 0 10px var(--accent-gold));
+}
+
+.countdown-content {
+    position: relative;
+    z-index: 1;
+}
+
+.countdown-content h2 {
+    font-size: 1.1rem;
+    color: var(--accent-gold);
+    margin-bottom: 15px;
+}
+
+.timer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    font-family: var(--font-en);
+}
+
+.time-block {
+    display: flex;
+    flex-direction: column;
+}
+
+.time-block span {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.time-block small {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.time-divider {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+    color: var(--accent-gold);
+}
+
+/* Stats */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.stat-item {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 12px;
+    text-align: center;
+    backdrop-filter: blur(5px);
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent-gold);
+    font-family: var(--font-en);
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Tabs */
+.tab-buttons {
+    display: flex;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 20px;
+}
+
+.tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 10px;
+    border-radius: 8px;
+    font-family: var(--font-bn);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.tab-btn.active {
+    background: var(--accent-gold);
+    color: var(--primary-dark);
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+/* Map Area */
+#map-container {
+    height: 400px;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid var(--glass-border);
+}
+
+#main-map {
+    height: 100%;
+    width: 100%;
+    z-index: 1;
+}
+
+.map-overlay {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    z-index: 10;
+}
+
+/* Forms & Inputs */
+.form-control {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 10px;
+    font-family: var(--font-bn);
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+input,
+select,
+textarea {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--glass-border);
+    color: #fff;
+    padding: 12px;
+    border-radius: 10px;
+    width: 100%;
+    margin-bottom: 15px;
+    font-family: inherit;
+}
+
+/* List View Cards */
+.location-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.location-card {
+    background: var(--card-bg);
+    border-radius: 18px;
+    padding: 16px;
+    border: 1px solid var(--glass-border);
+    transition: transform 0.2s;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.badge-biryani {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-verified {
+    background: var(--success);
+    color: white;
+}
+
+/* Buttons */
+.btn {
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-bn);
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-gold {
+    background: var(--accent-gold);
+    color: var(--primary-dark);
+}
+
+.btn-gold:hover {
+    background: var(--accent-gold-hover);
+    transform: translateY(-2px);
+}
+
+.btn-glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 2000;
+    backdrop-filter: blur(8px);
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.modal-content {
+    background: #064e3b;
+    max-width: 500px;
+    margin: 40px auto;
+    border-radius: 24px;
+    padding: 24px;
+    position: relative;
+    border: 1px solid var(--accent-gold);
+}
+
+.close-modal {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+#mini-map {
+    height: 200px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+
+/* Verification Actions */
+.verification-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.btn-action {
+    flex: 1;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    font-family: var(--font-bn);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-action.success:hover {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: var(--success);
+}
+
+.btn-action.danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: var(--danger);
+}
+
+/* Toast Notifications */
+#toast-container {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3000;
+    width: calc(100% - 40px);
+    max-width: 400px;
+}
+
+.toast {
+    background: #1f2937;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    border-left: 4px solid var(--accent-gold);
+    animation: slideUp 0.3s ease-out;
+}
+
+.toast-error {
+    border-left-color: var(--danger);
+}
+
+.toast-success {
+    border-left-color: var(--success);
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Skeleton Loading */
+.skeleton-card {
+    height: 180px;
+    background: linear-gradient(90deg, #064e3b 25%, #065f46 50%, #064e3b 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 18px;
+}
+
+@keyframes loading {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Popups */
+.popup-content {
+    color: #1f2937;
+    font-family: var(--font-bn);
+}
+
+.leaflet-popup-content-wrapper {
+    border-radius: 12px;
+}
+
+/* Premium Prayer Times Card */
+.prayer-card {
+    background: rgba(6, 78, 59, 0.4);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: var(--shadow-premium);
+    margin-top: 10px;
+}
+
+.calendar-header {
+    text-align: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.calendar-header h3 {
+    color: var(--accent-gold);
+    font-size: 1.4rem;
+    margin-bottom: 5px;
+}
+
+.calendar-header p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.prayer-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.prayer-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 16px 20px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 12px;
+}
+
+.prayer-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(251, 191, 36, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--accent-gold);
+    font-size: 1rem;
+}
+
+.prayer-item.highlight {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.prayer-item.highlight .prayer-icon {
+    background: rgba(251, 191, 36, 0.2);
+}
+
+.prayer-item.next-prayer {
+    background: linear-gradient(135deg, var(--accent-gold) 0%, #f59e0b 100%);
+    box-shadow: 0 8px 20px rgba(251, 191, 36, 0.35);
+    border: none;
+    transform: scale(1.02);
+}
+
+.prayer-item.next-prayer .prayer-name,
+.prayer-item.next-prayer .prayer-time {
+    color: #064e3b;
+    font-weight: 700;
+}
+
+.prayer-item.next-prayer .prayer-icon {
+    background: rgba(6, 78, 59, 0.2);
+    color: #064e3b;
+}
+
+.next-badge {
+    background: #064e3b;
+    color: var(--accent-gold);
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+}
+
+.prayer-name {
+    font-size: 1rem;
+    font-weight: 500;
+    flex: 1;
+}
+
+.prayer-time {
+    font-family: var(--font-en);
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Animations for premium feel */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tab-content:not(.hidden) {
+    animation: slideUp 0.4s ease-out forwards;
+}
+
+@keyframes popIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

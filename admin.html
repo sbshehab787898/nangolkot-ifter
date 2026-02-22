@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="bn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Intentionally generic title so it doesn't reveal it's admin -->
+    <title>বিরিয়ানি দিবে</title>
+    <meta name="robots" content="noindex, nofollow">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        /* ===== Password Gate ===== */
+        #gate {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .gate-card {
+            background: linear-gradient(145deg, #065f46, #064e3b);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 28px;
+            padding: 48px 36px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+            animation: fadeUp 0.5s ease-out;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .gate-icon {
+            width: 72px;
+            height: 72px;
+            background: rgba(251, 191, 36, 0.1);
+            border: 2px solid rgba(251, 191, 36, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 1.8rem;
+            color: var(--accent-gold);
+            transition: all 0.3s;
+        }
+
+        .gate-card.shake .gate-icon {
+            animation: shake 0.4s ease;
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #ef4444;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-8px);
+            }
+
+            75% {
+                transform: translateX(8px);
+            }
+        }
+
+        .gate-card h1 {
+            font-size: 1.3rem;
+            color: var(--accent-gold);
+            margin-bottom: 6px;
+        }
+
+        .gate-card p {
+            color: var(--text-muted);
+            font-size: 0.87rem;
+            margin-bottom: 28px;
+        }
+
+        .pass-field {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .pass-field input {
+            width: 100%;
+            padding: 14px 48px 14px 18px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            color: white;
+            font-family: var(--font-bn);
+            font-size: 1rem;
+            letter-spacing: 4px;
+            text-align: center;
+            transition: border-color 0.2s;
+            margin-bottom: 0;
+            box-sizing: border-box;
+        }
+
+        .pass-field input:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+        }
+
+        .gate-card.shake .pass-field input {
+            border-color: #ef4444;
+            animation: shake 0.4s ease;
+        }
+
+        .toggle-pass {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--accent-gold), #f59e0b);
+            color: #064e3b;
+            border: none;
+            border-radius: 14px;
+            font-family: var(--font-bn);
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(251, 191, 36, 0.4);
+        }
+
+        .error-msg {
+            color: #ef4444;
+            font-size: 0.84rem;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .attempts-bar {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 16px;
+        }
+
+        .attempt-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.3);
+            transition: background 0.3s;
+        }
+
+        .attempt-dot.used {
+            background: #ef4444;
+        }
+
+        .back-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.82rem;
+            margin-top: 20px;
+            transition: color 0.2s;
+        }
+
+        .back-home:hover {
+            color: white;
+        }
+
+        /* ===== Dashboard ===== */
+        #dashboard {
+            display: none;
+        }
+
+        .admin-header {
+            background: rgba(6, 78, 59, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 14px 0;
+            position: sticky;
+            top: 0;
+            z-index: 200;
+        }
+
+        .admin-header .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .admin-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--accent-gold);
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .logout-btn {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-family: var(--font-bn);
+            font-size: 0.82rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        .dash-body {
+            padding: 28px 0 60px;
+        }
+
+        /* Stats */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-bottom: 28px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px 16px;
+            text-align: center;
+        }
+
+        .stat-box .val {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+            font-family: var(--font-en);
+        }
+
+        .stat-box .lbl {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Section heading */
+        .section-head {
+            font-size: 1rem;
+            color: var(--accent-gold);
+            font-weight: 600;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 10px;
+        }
+
+        /* Table */
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .admin-table th {
+            background: rgba(0, 0, 0, 0.25);
+            color: var(--accent-gold);
+            padding: 12px 14px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .admin-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: var(--text-light);
+            vertical-align: middle;
+        }
+
+        .admin-table tr:hover td {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .tbl-wrap {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            overflow: hidden;
+            overflow-x: auto;
+            margin-bottom: 36px;
+        }
+
+        .act-btn {
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: none;
+            font-family: var(--font-bn);
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .act-approve {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            margin-right: 4px;
+        }
+
+        .act-approve:hover {
+            background: #10b981;
+            color: white;
+        }
+
+        .act-delete {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.25);
+        }
+
+        .act-delete:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        /* Notice */
+        .notice-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 36px;
+        }
+
+        .notice-card textarea {
+            width: 100%;
+            min-height: 100px;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+
+        .save-notice-btn {
+            background: var(--accent-gold);
+            color: #064e3b;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-family: var(--font-bn);
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .save-notice-btn:hover {
+            background: #f59e0b;
+        }
+
+        /* Status badge */
+        .s-active {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .s-pending {
+            color: #f59e0b;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="stars-container"></div>
+
+    <!-- ===== PASSWORD GATE ===== -->
+    <div id="gate">
+        <div class="gate-card" id="gate-card">
+            <div class="gate-icon" id="gate-icon">
+                <i class="fas fa-lock"></i>
+            </div>
+            <h1>প্রবেশাধিকার সংরক্ষিত</h1>
+            <p>এই পেজে প্রবেশ করতে পাসওয়ার্ড দিন</p>
+
+            <div class="pass-field">
+                <input type="password" id="pass-input" placeholder="••••••" maxlength="20"
+                    onkeydown="if(event.key==='Enter') tryLogin()">
+                <i class="fas fa-eye toggle-pass" id="eye-icon" onclick="togglePass()"></i>
+            </div>
+
+            <p class="error-msg" id="err-msg">
+                <i class="fas fa-times-circle"></i> ভুল পাসওয়ার্ড! আবার চেষ্টা করুন।
+            </p>
+
+            <div class="attempts-bar">
+                <div class="attempt-dot" id="dot1"></div>
+                <div class="attempt-dot" id="dot2"></div>
+                <div class="attempt-dot" id="dot3"></div>
+            </div>
+
+            <button class="login-btn" onclick="tryLogin()">
+                <i class="fas fa-unlock-alt"></i> প্রবেশ করুন
+            </button>
+
+            <br>
+            <a href="index.html" class="back-home">
+                <i class="fas fa-arrow-left"></i> হোমে ফিরে যান
+            </a>
+        </div>
+    </div>
+
+    <!-- ===== ADMIN DASHBOARD ===== -->
+    <div id="dashboard">
+        <header class="admin-header">
+            <div class="container">
+                <div class="admin-brand">
+                    <i class="fas fa-shield-alt"></i>
+                    অ্যাডমিন প্যানেল
+                    <span style="font-size:0.72rem;color:var(--text-muted);font-weight:400;">বিরিয়ানি দিবে</span>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center;">
+                    <a href="index.html"
+                        style="color:var(--text-muted);font-size:0.82rem;text-decoration:none;display:flex;align-items:center;gap:5px;">
+                        <i class="fas fa-home"></i> হোম
+                    </a>
+                    <button class="logout-btn" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> লগআউট
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="dash-body container">
+            <!-- Stats -->
+            <div class="stat-grid" style="margin-top:24px;">
+                <div class="stat-box">
+                    <div class="val" id="d-total">0</div>
+                    <div class="lbl">মোট স্পট</div>
+                </div>
+                <div class="stat-box">
+                    <div class="val" id="d-pending">0</div>
+                    <div class="lbl">পেন্ডিং</div>
+                </div>
+                <div class="stat-box">
+                    <div class="val" id="d-reported">0</div>
+                    <div class="lbl">রিপোর্টেড</div>
+                </div>
+            </div>
+
+            <!-- Notice -->
+            <h3 class="section-head"><i class="fas fa-bullhorn"></i> নোটিশ বোর্ড</h3>
+            <div class="notice-card">
+                <textarea id="admin-notice" class="form-control"
+                    placeholder="ব্যবহারকারীদের জন্য নোটিশ লিখুন..."></textarea>
+                <button class="save-notice-btn" onclick="saveNotice()">
+                    <i class="fas fa-save"></i> আপডেট করুন
+                </button>
+            </div>
+
+            <!-- Locations Table -->
+            <h3 class="section-head"><i class="fas fa-map-marker-alt"></i> ইফতার স্পট ম্যানেজমেন্ট</h3>
+            <div class="tbl-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>প্রতিষ্ঠান</th>
+                            <th>ধরন</th>
+                            <th>অবস্থা</th>
+                            <th>রিপোর্ট</th>
+                            <th>অ্যাকশন</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-list">
+                        <tr>
+                            <td colspan="5" style="text-align:center;color:var(--text-muted)">লোড হচ্ছে...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- User Logs -->
+            <h3 class="section-head"><i class="fas fa-list-alt"></i> ইউজার লগ (সাম্প্রতিক)</h3>
+            <div class="tbl-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>সময়</th>
+                            <th>ডিভাইস</th>
+                            <th>ব্যাটারি</th>
+                            <th>পেজ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-logs-list">
+                        <tr>
+                            <td colspan="4" style="text-align:center;color:var(--text-muted)">কোন লগ নেই</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  Config
+        // ============================================================
+        const ADMIN_PASS = '787898';
+        let failCount = 0;
+        let blocked = false;
+
+        // ============================================================
+        //  Auto-check session
+        // ============================================================
+        window.onload = () => {
+            if (sessionStorage.getItem('admin_ok') === '1') {
+                showDashboard();
+            }
+        };
+
+        // ============================================================
+        //  Login Logic
+        // ============================================================
+        function tryLogin() {
+            if (blocked) {
+                document.getElementById('err-msg').style.display = 'block';
+                document.getElementById('err-msg').innerHTML =
+                    '<i class="fas fa-ban"></i> অনেকবার ভুল হয়েছে। পেজ রিলোড করুন।';
+                return;
+            }
+
+            const val = document.getElementById('pass-input').value.trim();
+            if (val === ADMIN_PASS) {
+                sessionStorage.setItem('admin_ok', '1');
+
+                // Success animation
+                const icon = document.getElementById('gate-icon');
+                icon.style.background = 'rgba(16,185,129,0.15)';
+                icon.style.borderColor = 'rgba(16,185,129,0.4)';
+                icon.style.color = '#10b981';
+                icon.innerHTML = '<i class="fas fa-check"></i>';
+
+                setTimeout(showDashboard, 600);
+            } else {
+                failCount++;
+                shakeCard();
+                if (failCount >= 3) blocked = true;
+
+                // Color dots
+                for (let i = 1; i <= 3; i++) {
+                    const d = document.getElementById('dot' + i);
+                    d.classList.toggle('used', i <= failCount);
+                }
+
+                document.getElementById('err-msg').style.display = 'block';
+                document.getElementById('err-msg').innerHTML =
+                    `<i class="fas fa-times-circle"></i> ভুল পাসওয়ার্ড! (${failCount}/3)`;
+                document.getElementById('pass-input').value = '';
+                document.getElementById('pass-input').focus();
+            }
+        }
+
+        function shakeCard() {
+            const card = document.getElementById('gate-card');
+            card.classList.add('shake');
+            setTimeout(() => card.classList.remove('shake'), 500);
+        }
+
+        function togglePass() {
+            const inp = document.getElementById('pass-input');
+            const eye = document.getElementById('eye-icon');
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                eye.className = 'fas fa-eye-slash toggle-pass';
+            } else {
+                inp.type = 'password';
+                eye.className = 'fas fa-eye toggle-pass';
+            }
+        }
+
+        function showDashboard() {
+            document.getElementById('gate').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            loadAdminData();
+        }
+
+        function logout() {
+            sessionStorage.removeItem('admin_ok');
+            window.location.href = 'index.html';
+        }
+
+        // ============================================================
+        //  Dashboard Data
+        // ============================================================
+        function loadAdminData() {
+            const locations = JSON.parse(localStorage.getItem('iftar_locations') || '[]');
+            const logs = JSON.parse(localStorage.getItem('user_logs') || '[]');
+
+            document.getElementById('d-total').textContent = locations.length;
+            document.getElementById('d-pending').textContent = locations.filter(l => l.status === 'pending').length;
+            document.getElementById('d-reported').textContent = locations.filter(l => l.reports > 0).length;
+
+            // Notice
+            document.getElementById('admin-notice').value = localStorage.getItem('admin_notice') || '';
+
+            // Locations table
+            const tbody = document.getElementById('admin-list');
+            const foodMap = { biryani: 'বিরিয়ানি', kacchi: 'কাচ্চি', khichuri: 'খিচুড়ি', muri: 'মুড়ি', others: 'অন্যান্য' };
+            tbody.innerHTML = locations.length
+                ? locations.map(loc => `
+                    <tr>
+                        <td><strong>${loc.orgName}</strong><br><small style="color:var(--text-muted)">${loc.time}</small></td>
+                        <td>${foodMap[loc.foodType] || loc.foodType}</td>
+                        <td class="${loc.status === 'active' ? 's-active' : 's-pending'}">${loc.status === 'active' ? '✅ সক্রিয়' : '⏳ পেন্ডিং'}</td>
+                        <td>${loc.reports}</td>
+                        <td>
+                            ${loc.status === 'pending' ? `<button class="act-btn act-approve" onclick="approveLocation(${loc.id})"><i class="fas fa-check"></i> অনুমোদন</button>` : ''}
+                            <button class="act-btn act-delete" onclick="deleteLocation(${loc.id})"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('')
+                : '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">কোন ডাটা নেই</td></tr>';
+
+            // Logs table
+            const ltbody = document.getElementById('user-logs-list');
+            ltbody.innerHTML = logs.length
+                ? [...logs].reverse().slice(0, 50).map(log => `
+                    <tr>
+                        <td style="font-size:0.78rem;white-space:nowrap">${log.time}</td>
+                        <td style="font-size:0.75rem;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${log.userAgent || '—'}</td>
+                        <td>${log.battery || '—'}</td>
+                        <td><small>${log.url ? log.url.split('/').pop() || 'home' : 'home'}</small></td>
+                    </tr>
+                `).join('')
+                : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">কোন রেকর্ড নেই</td></tr>';
+        }
+
+        function approveLocation(id) {
+            let locs = JSON.parse(localStorage.getItem('iftar_locations') || '[]');
+            const loc = locs.find(l => l.id === id);
+            if (loc) { loc.status = 'active'; loc.verified = true; }
+            localStorage.setItem('iftar_locations', JSON.stringify(locs));
+            loadAdminData();
+        }
+
+        function deleteLocation(id) {
+            if (!confirm('এই স্পটটি মুছে ফেলবেন?')) return;
+            let locs = JSON.parse(localStorage.getItem('iftar_locations') || '[]');
+            locs = locs.filter(l => l.id !== id);
+            localStorage.setItem('iftar_locations', JSON.stringify(locs));
+            loadAdminData();
+        }
+
+        function saveNotice() {
+            localStorage.setItem('admin_notice', document.getElementById('admin-notice').value);
+            const btn = document.querySelector('.save-notice-btn');
+            btn.textContent = '✅ সেভ হয়েছে!';
+            setTimeout(() => btn.innerHTML = '<i class="fas fa-save"></i> আপডেট করুন', 2000);
+        }
+    </script>
+</body>
+
+</html>
