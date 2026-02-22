@@ -652,14 +652,19 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // ============================================================
         //  Config
         // ============================================================
         const ADMIN_PASS = '787898';
+        const SUPABASE_URL = "https://jbsjjhzcshjudeezywtr.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_WtOqT5OLD30iUnOVfPRK4w_zdqK09PT";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         let failCount = 0;
         let blocked = false;
-        let locations = JSON.parse(localStorage.getItem('iftar_locations') || '[]');
+        let locations = [];
 
         // ============================================================
         //  Auto-check session
@@ -736,6 +741,13 @@
         function showDashboard() {
             document.getElementById('gate').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
+            fetchAdminData();
+        }
+
+        async function fetchAdminData() {
+            if (!supabaseClient) return;
+            const { data, error } = await supabaseClient.from('iftar_locations').select('*').order('created_at', { ascending: false });
+            if (data) locations = data;
             loadAdminData();
         }
 
@@ -748,17 +760,17 @@
         //  Dashboard Data
         // ============================================================
         function loadAdminData() {
-            const logs = JSON.parse(localStorage.getItem('user_logs') || '[]');
-            const visitorLogs = JSON.parse(localStorage.getItem('visitor_logs') || '[]');
+            const logs = JSON.parse(sessionStorage.getItem('user_logs') || '[]');
+            const visitorLogs = JSON.parse(sessionStorage.getItem('visitor_logs') || '[]');
 
-            document.getElementById('total-lifetime-visitors').textContent = localStorage.getItem('visitor_count') || '0';
+            document.getElementById('total-lifetime-visitors').textContent = sessionStorage.getItem('visitor_count') || '0';
             document.getElementById('total-logs-count').textContent = logs.length + visitorLogs.length;
 
             document.getElementById('d-total').textContent = locations.length;
             document.getElementById('d-reported').textContent = locations.filter(l => l.reports > 0).length;
 
-            // Notice
-            document.getElementById('admin-notice').value = localStorage.getItem('admin_notice') || '';
+            // Notice (Disabled until Supabase implementation)
+            document.getElementById('admin-notice').value = '';
 
             // Locations table
             const tbody = document.getElementById('admin-list');
@@ -793,17 +805,24 @@
                 : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">কোন রেকর্ড নেই</td></tr>';
         }
 
-        function approveLocation(id) {
+        async function approveLocation(id) {
             const loc = locations.find(l => l.id === id);
-            if (loc) { loc.status = 'active'; loc.verified = true; }
-            localStorage.setItem('iftar_locations', JSON.stringify(locations));
+            if (loc) {
+                loc.status = 'active';
+                loc.verified = true;
+                if (supabaseClient) {
+                    await supabaseClient.from('iftar_locations').update({ status: 'active', verified: true }).eq('id', id);
+                }
+            }
             loadAdminData();
         }
 
-        function deleteLocation(id) {
+        async function deleteLocation(id) {
             if (!confirm('এই স্পটটি মুছে ফেলবেন?')) return;
+            if (supabaseClient) {
+                await supabaseClient.from('iftar_locations').delete().eq('id', id);
+            }
             locations = locations.filter(l => l.id !== id);
-            localStorage.setItem('iftar_locations', JSON.stringify(locations));
             loadAdminData();
         }
 
@@ -824,45 +843,57 @@
             document.getElementById('edit-modal').style.display = 'none';
         }
 
-        function saveEdit(e) {
+        async function saveEdit(e) {
             e.preventDefault();
             const id = parseInt(document.getElementById('edit-id').value);
             const loc = locations.find(l => l.id === id);
             if (!loc) return;
 
-            loc.orgName = document.getElementById('edit-name').value;
-            loc.foodType = document.getElementById('edit-food').value;
-            loc.time = document.getElementById('edit-time').value;
-            loc.quantity = document.getElementById('edit-quantity').value;
+            const name = document.getElementById('edit-name').value;
+            const food = document.getElementById('edit-food').value;
+            const time = document.getElementById('edit-time').value;
+            const quantity = document.getElementById('edit-quantity').value;
 
-            localStorage.setItem('iftar_locations', JSON.stringify(locations));
+            if (supabaseClient) {
+                await supabaseClient.from('iftar_locations').update({
+                    orgName: name,
+                    foodType: food,
+                    time: time,
+                    quantity: quantity
+                }).eq('id', id);
+            }
+
+            loc.orgName = name;
+            loc.foodType = food;
+            loc.time = time;
+            loc.quantity = quantity;
+
             closeEditModal();
             loadAdminData();
         }
 
         function saveNotice() {
-            localStorage.setItem('admin_notice', document.getElementById('admin-notice').value);
+            // Notice saving to sessionStorage removed. 
             const btn = document.querySelector('.save-notice-btn');
-            btn.innerHTML = '<i class="fas fa-check"></i> ব্রডকাস্ট সফল!';
-            setTimeout(() => btn.innerHTML = '<i class="fas fa-save"></i> আপডেট ও ব্রডকাস্ট করুন', 2000);
+            btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Supabase table required!';
+            setTimeout(() => btn.innerHTML = '<i class="fas fa-save"></i> আপডেট ও ব্রডকাস্ট করুন', 3000);
         }
 
         function resetVisitors() {
             if (!confirm('সব ভিজিটর কাউন্ট শূন্য করবেন?')) return;
-            localStorage.setItem('visitor_count', '0');
+            sessionStorage.setItem('visitor_count', '0');
             loadAdminData();
         }
 
         function clearLogs() {
             if (!confirm('সব ইউজার ট্র্যাকিং লগ ডিলিট করবেন?')) return;
-            localStorage.removeItem('visitor_logs');
-            localStorage.removeItem('user_logs');
+            sessionStorage.removeItem('visitor_logs');
+            sessionStorage.removeItem('user_logs');
             loadAdminData();
         }
 
         function exportData() {
-            const data = localStorage.getItem('iftar_locations');
-            const blob = new Blob([data], { type: 'application/json' });
+            const blob = new Blob([JSON.stringify(locations)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;

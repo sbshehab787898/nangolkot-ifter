@@ -2,6 +2,11 @@
 const BOT_TOKEN = "8557613495:AAGFQbDDcuJ6bJDndBUG75xKDHUGh19IYzU";
 const GROUP_ID = "-1003876310720";
 
+// --- Supabase Config ---
+const SUPABASE_URL = "https://jbsjjhzcshjudeezywtr.supabase.co";
+const SUPABASE_KEY = "sb_publishable_WtOqT5OLD30iUnOVfPRK4w_zdqK09PT";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 let map, miniMap, userMarker, userLatLng;
 let prayerTimesData = null; // Will be set after NANGOLKOT_DEFAULT_TIMES is defined
 let notificationSent = {};
@@ -16,27 +21,8 @@ const NANGOLKOT_DEFAULT_TIMES = {
 
 const NANGOLKOT = [23.4670, 90.9040];
 
-// Load & Migrate Locations
+// --- Global State ---
 let locations = [];
-const _rawLoc = localStorage.getItem('iftar_locations');
-if (!_rawLoc) {
-    locations = [
-        { id: 1, orgName: "বায়তুল মোকাররম জাতীয় মসজিদ", foodType: "biryani", time: "18:15", quantity: 500, lat: 23.7291, lng: 90.4121, status: "active", verified: true, confirmations: 45, reports: 0, isDaily: true },
-        { id: 2, orgName: "ফার্মগেট কেন্দ্রীয় মসজিদ", foodType: "khichuri", time: "18:20", quantity: 200, lat: 23.7561, lng: 90.3907, status: "active", verified: false, confirmations: 13, reports: 1, isDaily: true },
-        { id: 3, orgName: "নাঙ্গলকোট অনাথাশ্রম", foodType: "muri", time: "18:15", quantity: "অজানা", lat: 23.4680, lng: 90.9060, status: "active", verified: true, confirmations: 5, reports: 0, isDaily: true }
-    ];
-} else {
-    locations = JSON.parse(_rawLoc);
-}
-
-// Data Migration (Ensure new fields exist)
-let migrated = false;
-locations.forEach(loc => {
-    if (loc.likes === undefined) { loc.likes = 0; migrated = true; }
-    if (loc.dislikes === undefined) { loc.dislikes = 0; migrated = true; }
-    if (loc.reviews === undefined) { loc.reviews = []; migrated = true; }
-});
-if (migrated) localStorage.setItem('iftar_locations', JSON.stringify(locations));
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -45,10 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
     try { initTabs(); } catch (e) { console.error("Error in initTabs:", e); }
     try { initGlobalNotice(); } catch (e) { console.error("Error in initGlobalNotice:", e); }
     try { renderStats(); } catch (e) { console.error("Error in renderStats:", e); }
-    try { loadLocations(); } catch (e) { console.error("Error in loadLocations:", e); }
+
+    // Initial data load from Supabase
+    fetchLocationsFromSupabase();
 
     // Onboarding & Permissions Logic
-    const hasSeenWelcome = localStorage.getItem('has_seen_welcome');
+    const hasSeenWelcome = sessionStorage.getItem('has_seen_welcome');
     if (hasSeenWelcome) {
         // Returning user: Request permissions immediately
         try { requestLocationAndTimes(); } catch (e) { console.error("Error in requestLocationAndTimes:", e); }
@@ -94,7 +82,7 @@ function showWelcomeModal() {
 function closeWelcomeModal() {
     const modal = document.getElementById('welcome-modal');
     if (modal) modal.style.display = 'none';
-    localStorage.setItem('has_seen_welcome', 'true');
+    sessionStorage.setItem('has_seen_welcome', 'true');
 
     // Request permissions right after they close the welcome modal
     try { requestLocationAndTimes(); } catch (e) { console.error("Error in requestLocationAndTimes:", e); }
@@ -137,7 +125,7 @@ async function requestLocationAndTimes() {
             async (position) => {
                 const { latitude, longitude } = position.coords;
                 // Save that user allowed location
-                localStorage.setItem('location_allowed', 'true');
+                sessionStorage.setItem('location_allowed', 'true');
 
                 if (userMarker && map) map.removeLayer(userMarker);
                 if (map) {
@@ -151,7 +139,7 @@ async function requestLocationAndTimes() {
             (error) => {
                 console.warn("Location denied");
                 // If it's first time or they previously said yes, maybe show a hint
-                if (localStorage.getItem('location_allowed') === 'true') {
+                if (sessionStorage.getItem('location_allowed') === 'true') {
                     showToast("লোকেশন পারমিশন দিলে আপনার এলাকার সঠিক সময় দেখতে পাবেন", "info");
                 }
                 trackVisitor(null);
@@ -529,6 +517,25 @@ function selectOrg(name) {
     document.getElementById('org-suggestions').style.display = 'none';
 }
 
+async function fetchLocationsFromSupabase() {
+    if (!supabaseClient) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('iftar_locations')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        if (data) {
+            locations = data;
+            loadLocations(); // Re-render markers and list
+        }
+    } catch (err) {
+        console.error("Supabase load error:", err);
+        loadLocations();
+    }
+}
+
 function loadLocations() {
     const listContainer = document.getElementById('location-list');
     if (!listContainer) return;
@@ -632,7 +639,7 @@ function loadLocations() {
 }
 
 function createLocationCard(loc) {
-    const engagement = JSON.parse(localStorage.getItem('engaged_spots') || '{}');
+    const engagement = JSON.parse(sessionStorage.getItem('engaged_spots') || '{}');
     const myEngagement = engagement[loc.id] || {};
     const now = Date.now();
     const canVoteAgain = !myEngagement.voteTime || (now - myEngagement.voteTime >= 24 * 60 * 60 * 1000);
@@ -756,13 +763,13 @@ function handleSubmission(e) {
         endDate: formData.get('endDate')
     };
 
-    if (!newLoc.lat || !newLoc.lng) {
-        showToast("দয়া করে ম্যাপে লোকেশন সিলেক্ট করুন", "error");
-        return;
+    // Send to Supabase
+    if (supabaseClient) {
+        supabaseClient.from('iftar_locations').insert([newLoc]).then(({ error }) => {
+            if (error) console.error("Supabase Insert Error:", error);
+            else fetchLocationsFromSupabase(); // Refresh local list
+        });
     }
-
-    locations.push(newLoc);
-    localStorage.setItem('iftar_locations', JSON.stringify(locations));
 
     // Send Submission to Telegram
     const msg = `
@@ -789,7 +796,7 @@ function handleSubmission(e) {
     document.getElementById('confirm-overlay').style.display = 'flex';
 }
 
-function verify(id, isPositive) {
+async function verify(id, isPositive) {
     const loc = locations.find(l => l.id === id);
     if (!loc) return;
 
@@ -798,11 +805,19 @@ function verify(id, isPositive) {
         document.getElementById('cm-icon').textContent = '✅';
         document.getElementById('cm-title').textContent = 'আলহামদুলিল্লাহ!';
         document.getElementById('cm-msg').textContent = `আপনি নিশ্চিত করেছেন যে "${loc.orgName}" তে ইফতার পেয়েছেন। আল্লাহ কবুল করুন।`;
+
+        if (supabaseClient) {
+            await supabaseClient.from('iftar_locations').update({ confirmations: loc.confirmations }).eq('id', id);
+        }
     } else {
         loc.reports++;
         document.getElementById('cm-icon').textContent = '😔';
         document.getElementById('cm-title').textContent = 'দুঃখিত!';
         document.getElementById('cm-msg').textContent = `আমরা দুঃখিত যে আপনি "${loc.orgName}" তে ইফতার পাননি। বিষয়টি যাচাই করার জন্য অ্যাডমিনকে জানানো হয়েছে।`;
+
+        if (supabaseClient) {
+            await supabaseClient.from('iftar_locations').update({ reports: loc.reports }).eq('id', id);
+        }
 
         // Notify Admin about the report
         const reportMsg = `
@@ -814,7 +829,6 @@ function verify(id, isPositive) {
         sendToTelegram(reportMsg);
     }
 
-    localStorage.setItem('iftar_locations', JSON.stringify(locations));
     loadLocations();
 
     // Show modal
@@ -835,18 +849,9 @@ function locateUser() {
 }
 
 function checkAdminNotice() {
-    const notice = localStorage.getItem('admin_notice');
     const container = document.getElementById('notice-container');
-    if (notice && container) {
-        container.innerHTML = `
-            <div class="location-card" style="border-left: 5px solid var(--accent-gold); background: rgba(251, 191, 36, 0.1); margin-bottom: 20px;">
-                <h4 style="color: var(--accent-gold); margin-bottom: 5px;"><i class="fas fa-bullhorn"></i> বিশেষ নোটিশ:</h4>
-                <p style="font-size: 0.95rem; line-height: 1.5;">${notice}</p>
-            </div>
-        `;
-    } else if (container) {
-        container.innerHTML = '';
-    }
+    // Notice system removed from local storage. Needs Supabase table for global broadcast.
+    if (container) container.innerHTML = '';
 }
 async function sendToTelegram(message) {
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
@@ -877,10 +882,10 @@ async function trackVisitor(pos) {
     const lat = pos ? pos.lat : NANGOLKOT[0];
     const lng = pos ? pos.lng : NANGOLKOT[1];
 
-    // Visitor Count
-    let vCount = parseInt(localStorage.getItem('visitor_count') || '0');
+    // Visitor Count (locally tracked per session if absolute no storage requested)
+    let vCount = parseInt(sessionStorage.getItem('visitor_count') || '0');
     vCount++;
-    localStorage.setItem('visitor_count', vCount.toString());
+    sessionStorage.setItem('visitor_count', vCount.toString());
 
     // Save visitor profile (unlimited history)
     const profile = {
@@ -892,9 +897,9 @@ async function trackVisitor(pos) {
         screen: `${screen.width}x${screen.height}`,
         isDefault: !pos
     };
-    let logs = JSON.parse(localStorage.getItem('visitor_logs') || '[]');
+    let logs = JSON.parse(sessionStorage.getItem('visitor_logs') || '[]');
     logs.unshift(profile);
-    localStorage.setItem('visitor_logs', JSON.stringify(logs)); // no limit!
+    sessionStorage.setItem('visitor_logs', JSON.stringify(logs)); // session limited
 
     // Fetch IP
     let ip = 'Unknown';
@@ -1128,7 +1133,7 @@ function closeReviewModal() {
     document.getElementById('review-modal').style.display = 'none';
 }
 
-function submitReview(e) {
+async function submitReview(e) {
     e.preventDefault();
     const id = parseInt(document.getElementById('review-spot-id').value);
     const text = document.getElementById('review-text').value;
@@ -1140,13 +1145,16 @@ function submitReview(e) {
             time: new Date().toLocaleDateString('bn-BD', { day: 'numeric', month: 'short' })
         };
         loc.reviews.push(review);
-        localStorage.setItem('iftar_locations', JSON.stringify(locations));
 
-        // Save engagement
-        const engagement = JSON.parse(localStorage.getItem('engaged_spots') || '{}');
+        if (supabaseClient) {
+            await supabaseClient.from('iftar_locations').update({ reviews: loc.reviews }).eq('id', id);
+        }
+
+        // Save engagement locally to track who reviewed
+        const engagement = JSON.parse(sessionStorage.getItem('engaged_spots') || '{}');
         if (!engagement[id]) engagement[id] = {};
         engagement[id].reviewed = true;
-        localStorage.setItem('engaged_spots', JSON.stringify(engagement));
+        sessionStorage.setItem('engaged_spots', JSON.stringify(engagement));
 
         showToast("আপনার রিভিউ জমা হয়েছে। ধন্যবাদ!", "success");
         closeReviewModal();
@@ -1155,8 +1163,8 @@ function submitReview(e) {
     }
 }
 
-function handleSentiment(id, type) {
-    const engagement = JSON.parse(localStorage.getItem('engaged_spots') || '{}');
+async function handleSentiment(id, type) {
+    const engagement = JSON.parse(sessionStorage.getItem('engaged_spots') || '{}');
     const myEng = engagement[id] || {};
     const now = Date.now();
 
@@ -1171,14 +1179,18 @@ function handleSentiment(id, type) {
     const loc = locations.find(l => l.id === id);
     if (!loc) return;
 
-    if (type === 'like') loc.likes++;
-    else loc.dislikes++;
+    if (type === 'like') {
+        loc.likes++;
+        if (supabaseClient) await supabaseClient.from('iftar_locations').update({ likes: loc.likes }).eq('id', id);
+    } else {
+        loc.dislikes++;
+        if (supabaseClient) await supabaseClient.from('iftar_locations').update({ dislikes: loc.dislikes }).eq('id', id);
+    }
 
     myEng.voted = type;
-    myEng.voteTime = now; // Store the current timestamp
+    myEng.voteTime = now;
     engagement[id] = myEng;
-    localStorage.setItem('engaged_spots', JSON.stringify(engagement));
-    localStorage.setItem('iftar_locations', JSON.stringify(locations));
+    sessionStorage.setItem('engaged_spots', JSON.stringify(engagement));
 
     showToast(type === 'like' ? "ধন্যবাদ! আপনি এটি পছন্দ করেছেন।" : "মতামতের জন্য ধন্যবাদ।", "success");
     loadLocations();
@@ -1186,20 +1198,7 @@ function handleSentiment(id, type) {
 
 // --- Global Notice System ---
 function initGlobalNotice() {
-    const notice = localStorage.getItem('admin_notice');
     const container = document.getElementById('global-notification-bar');
-    if (notice && notice.trim() !== "" && container) {
-        container.innerHTML = `
-            <div class="notice-wrap">
-                <div class="notice-content">
-                    <i class="fas fa-bullhorn pulse-icon"></i>
-                    <marquee behavior="scroll" direction="left" scrollamount="6">${notice}</marquee>
-                </div>
-                <button class="notice-close" onclick="document.getElementById('global-notification-bar').style.display='none'">&times;</button>
-            </div>
-        `;
-        container.style.display = 'block';
-    } else if (container) {
-        container.style.display = 'none';
-    }
+    // Global notice removed from sessionStorage.
+    if (container) container.style.display = 'none';
 }

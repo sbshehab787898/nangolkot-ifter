@@ -599,7 +599,7 @@
                 <span style="font-family:var(--font-en);font-weight:700;font-size:1.05rem;">বিরিয়ানি <span
                         style="color:var(--accent-gold)">দিবে</span></span>
             </a>
-            <button onclick="localStorage.setItem('open_add_modal','1'); window.location.href='index.html';" style="
+            <button onclick="sessionStorage.setItem('open_add_modal','1'); window.location.href='index.html';" style="
                 background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);
                 color:var(--accent-gold);padding:7px 14px;border-radius:10px;
                 font-family:var(--font-bn);font-size:0.82rem;cursor:pointer;
@@ -712,22 +712,31 @@
     <!-- Toast -->
     <div id="toast-container"></div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // --- Data ---
-        // null = first visit (load defaults), '[]' = deleted all (respect that!)
-        const _rawLoc = localStorage.getItem('iftar_locations');
-        let locations;
-        if (_rawLoc === null) {
-            locations = [
-                { id: 1, orgName: "বায়তুল মোকাররম জাতীয় মসজিদ", foodType: "biryani", time: "18:15", quantity: 500, lat: 23.7297, lng: 90.4121, status: "active", verified: true, confirmations: 45, reports: 0 },
-                { id: 2, orgName: "ফার্মগেট মসজিদ", foodType: "khichuri", time: "18:20", quantity: 200, lat: 23.7561, lng: 90.3892, status: "active", verified: false, confirmations: 12, reports: 1 }
-            ];
-            localStorage.setItem('iftar_locations', JSON.stringify(locations));
-        } else {
-            locations = JSON.parse(_rawLoc); // may be [] — that's fine!
-        }
+        // --- Supabase Config ---
+        const SUPABASE_URL = "https://jbsjjhzcshjudeezywtr.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_WtOqT5OLD30iUnOVfPRK4w_zdqK09PT";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        let locations = [];
         let activeFoodFilter = 'all';
+
+        async function fetchLocationsFromSupabase() {
+            if (!supabaseClient) return;
+            try {
+                const { data, error } = await supabaseClient.from('iftar_locations').select('*').order('created_at', { ascending: false });
+                if (data) {
+                    locations = data;
+                    renderStats();
+                    filterLocations();
+                }
+            } catch (err) {
+                console.error("Supabase load error:", err);
+                renderStats();
+                filterLocations();
+            }
+        }
 
         const foodLabels = { biryani: '🍛 বিরিয়ানি', kacchi: '🍖 কাচ্চি', khichuri: '🥘 খিচুড়ি', muri: '🍚 বুট মুড়ি', others: '🍽️ অন্যান্য' };
 
@@ -803,12 +812,15 @@
         }
 
         // --- Confirm Got (পেয়েছি) ---
-        function confirmGot(id, e) {
+        async function confirmGot(id, e) {
             e.stopPropagation();
             const loc = locations.find(l => l.id === id);
             if (!loc) return;
             loc.confirmations++;
-            localStorage.setItem('iftar_locations', JSON.stringify(locations));
+
+            if (supabaseClient) {
+                await supabaseClient.from('iftar_locations').update({ confirmations: loc.confirmations }).eq('id', id);
+            }
 
             // Update counter inline
             const el = document.getElementById('got-' + id);
@@ -823,12 +835,15 @@
         }
 
         // --- Confirm Not Got (পাইনি) ---
-        function confirmNotGot(id, e) {
+        async function confirmNotGot(id, e) {
             e.stopPropagation();
             const loc = locations.find(l => l.id === id);
             if (!loc) return;
             loc.reports++;
-            localStorage.setItem('iftar_locations', JSON.stringify(locations));
+
+            if (supabaseClient) {
+                await supabaseClient.from('iftar_locations').update({ reports: loc.reports }).eq('id', id);
+            }
 
             const el = document.getElementById('notgot-' + id);
             if (el) el.textContent = `(${loc.reports})`;
@@ -850,7 +865,7 @@
         }
 
         function openAddModal() {
-            localStorage.setItem('open_add_modal', '1');
+            sessionStorage.setItem('open_add_modal', '1');
         }
 
         // --- Toast ---
@@ -864,8 +879,7 @@
         }
 
         // --- Init ---
-        renderStats();
-        filterLocations();
+        fetchLocationsFromSupabase();
     </script>
 
     <footer class="main-footer"
