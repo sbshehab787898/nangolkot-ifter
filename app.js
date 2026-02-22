@@ -118,7 +118,7 @@ async function requestLocationAndTimes() {
 
 async function fetchPrayerTimes(lat, lng) {
     try {
-        const date = new Date().toLocaleDateString('en-GB').split('/').reverse().join('-');
+        const date = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
         const response = await fetch(`https://api.aladhan.com/v1/timings/${date}?latitude=${lat}&longitude=${lng}&method=2`);
         const data = await response.json();
 
