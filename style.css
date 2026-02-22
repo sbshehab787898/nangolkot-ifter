@@ -758,11 +758,11 @@ textarea {
 /* ===== Filter Chips (index.html list-view) ===== */
 .chip-container {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     overflow-x: auto;
-    padding: 10px 0 16px;
-    justify-content: center;
-    /* Centering for large screens */
+    padding: 10px 15px 18px;
+    justify-content: safe center;
+    /* Centering with overflow protection */
     scrollbar-width: none;
     /* Firefox */
     -ms-overflow-style: none;
@@ -776,6 +776,16 @@ textarea {
         justify-content: flex-start;
         padding-left: 15px;
         padding-right: 15px;
+    }
+}
+
+/* Ensure chips don't look cramped on tiny screens */
+@media (max-width: 400px) {
+
+    .fchip,
+    .dchip {
+        padding: 6px 12px;
+        font-size: 0.8rem;
     }
 }
 
@@ -864,11 +874,12 @@ textarea {
 /* Global Notice Bar */
 #global-notification-bar {
     background: linear-gradient(90deg, #064e3b, #065f46);
-    border-bottom: 2px solid var(--accent-gold);
+    border-bottom: 1px solid var(--accent-gold);
     color: white;
-    padding: 10px 0;
+    padding: 6px 0;
     z-index: 1001;
     overflow: hidden;
+    font-size: 0.85rem;
 }
 
 .notice-wrap {

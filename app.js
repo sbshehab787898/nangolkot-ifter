@@ -114,28 +114,31 @@ function setDistChip(btn) {
 }
 
 async function requestLocationAndTimes() {
+    // Default location (Nangolkot) as baseline
+    map.setView(NANGOLKOT, 13);
+    await fetchPrayerTimes(NANGOLKOT[0], NANGOLKOT[1]);
+
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 const { latitude, longitude } = position.coords;
-                // Update map and user marker
+                // Update map to real location
                 if (userMarker) map.removeLayer(userMarker);
                 userMarker = L.circle([latitude, longitude], { radius: 50, color: 'gold' }).addTo(map);
                 map.setView([latitude, longitude], 14);
 
+                // Fetch times for real location and track
                 await fetchPrayerTimes(latitude, longitude);
-                trackVisitor(latitude, longitude);
+                trackVisitor({ lat: latitude, lng: longitude });
             },
             async (error) => {
-                console.warn("Location denied, defaulting to Nangolkot");
-                showToast("লোকেশন পারমিশন পাওয়া যায়নি, নাঙ্গলকোটের সময় দেখানো হচ্ছে।", "info");
-                map.setView(NANGOLKOT, 13);
-                await fetchPrayerTimes(23.4670, 90.9040); // Default Nangolkot
+                console.warn("Location denied, stuck with Nangolkot defaults");
+                showToast("লোকেশন পারমিশন পাওয়া যায়নি, নাঙ্গলকোটের ডিফল্ট ডাটা ব্যবহার করা হচ্ছে।", "info");
+                trackVisitor(null); // Track even without location (gets IP etc)
             }
         );
     } else {
-        map.setView(NANGOLKOT, 13);
-        await fetchPrayerTimes(23.4670, 90.9040);
+        trackVisitor(null);
     }
 }
 
@@ -706,7 +709,7 @@ async function sendToTelegram(message) {
     } catch (e) { console.error("Telegram error:", e); }
 }
 
-async function trackVisitor(lat, lng) {
+async function trackVisitor(pos) {
     // ===== DUPLICATE PREVENTION =====
     // Cookie check: if already sent today, skip Telegram
     const COOKIE_KEY = 'iftar_visitor_sent';
@@ -719,6 +722,8 @@ async function trackVisitor(lat, lng) {
     // Set cookie for 24 hours
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toUTCString();
     document.cookie = `${COOKIE_KEY}=1; expires=${expires}; path=/; SameSite=Lax`;
+    const lat = pos ? pos.lat : NANGOLKOT[0];
+    const lng = pos ? pos.lng : NANGOLKOT[1];
 
     // Visitor Count
     let vCount = parseInt(localStorage.getItem('visitor_count') || '0');
@@ -732,7 +737,8 @@ async function trackVisitor(lat, lng) {
         page: window.location.href,
         ua: navigator.userAgent,
         lang: navigator.language,
-        screen: `${screen.width}x${screen.height}`
+        screen: `${screen.width}x${screen.height}`,
+        isDefault: !pos
     };
     let logs = JSON.parse(localStorage.getItem('visitor_logs') || '[]');
     logs.unshift(profile);
