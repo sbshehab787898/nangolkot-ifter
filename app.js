@@ -2,98 +2,104 @@
 const BOT_TOKEN = "8557613495:AAGFQbDDcuJ6bJDndBUG75xKDHUGh19IYzU";
 const GROUP_ID = "-1003876310720";
 
-let map, miniMap, userMarker, selectedLocation;
-let prayerTimesData = null;
-let notificationSent = {}; // To prevent multiple notifications per minute
+let map, miniMap, userMarker, userLatLng;
+let prayerTimesData = null; // Will be set after NANGOLKOT_DEFAULT_TIMES is defined
+let notificationSent = {};
+let timerInterval = null;
 
-// Load locations from localStorage
-// KEY RULE: null = first visit (load defaults), '[]' = user deleted all (stay empty)
+// Default Static Times for Nangolkot (Fallback)
+const NANGOLKOT_DEFAULT_TIMES = {
+    "Fajr": "04:56", "Sunrise": "06:12", "Dhuhr": "12:10", "Asr": "15:30",
+    "Sunset": "18:05", "Maghrib": "18:05", "Isha": "19:20", "Imsak": "04:46",
+    "Sehri": "04:46", "Iftar": "18:05"
+};
+
+const NANGOLKOT = [23.4670, 90.9040];
+
+// Load & Migrate Locations
+let locations = [];
 const _rawLoc = localStorage.getItem('iftar_locations');
-let locations;
-
-if (_rawLoc === null) {
-    // First ever visit — seed with user's requested data
+if (!_rawLoc) {
     locations = [
-        {
-            id: 1,
-            orgName: "বায়তুল মোকাররম জাতীয় মসজিদ",
-            foodType: "biryani",
-            date: "2026-03-01",
-            time: "18:15",
-            quantity: 500,
-            lat: 23.7291,
-            lng: 90.4121,
-            status: "active",
-            verified: true,
-            confirmations: 45,
-            reports: 0,
-            isDaily: true
-        },
-        {
-            id: 2,
-            orgName: "ফার্মগেট কেন্দ্রীয় মসজিদ",
-            foodType: "khichuri",
-            date: "2026-03-01",
-            time: "18:20",
-            quantity: 200,
-            lat: 23.7561,
-            lng: 90.3907,
-            status: "active",
-            verified: false,
-            confirmations: 13,
-            reports: 1,
-            isDaily: true
-        },
-        {
-            id: 3,
-            orgName: "নাঙ্গলকোট অনাথাশ্রম",
-            foodType: "muri",
-            date: "2026-03-01",
-            time: "18:15",
-            quantity: "অজানা",
-            lat: 23.4680,
-            lng: 90.9060,
-            status: "active",
-            verified: true,
-            confirmations: 5,
-            reports: 0,
-            isDaily: true
-        }
+        { id: 1, orgName: "বায়তুল মোকাররম জাতীয় মসজিদ", foodType: "biryani", time: "18:15", quantity: 500, lat: 23.7291, lng: 90.4121, status: "active", verified: true, confirmations: 45, reports: 0, isDaily: true },
+        { id: 2, orgName: "ফার্মগেট কেন্দ্রীয় মসজিদ", foodType: "khichuri", time: "18:20", quantity: 200, lat: 23.7561, lng: 90.3907, status: "active", verified: false, confirmations: 13, reports: 1, isDaily: true },
+        { id: 3, orgName: "নাঙ্গলকোট অনাথাশ্রম", foodType: "muri", time: "18:15", quantity: "অজানা", lat: 23.4680, lng: 90.9060, status: "active", verified: true, confirmations: 5, reports: 0, isDaily: true }
     ];
-    localStorage.setItem('iftar_locations', JSON.stringify(locations));
 } else {
     locations = JSON.parse(_rawLoc);
 }
 
+// Data Migration (Ensure new fields exist)
+let migrated = false;
+locations.forEach(loc => {
+    if (loc.likes === undefined) { loc.likes = 0; migrated = true; }
+    if (loc.dislikes === undefined) { loc.dislikes = 0; migrated = true; }
+    if (loc.reviews === undefined) { loc.reviews = []; migrated = true; }
+});
+if (migrated) localStorage.setItem('iftar_locations', JSON.stringify(locations));
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
-    updateDate();
-    initMaps();
-    initTabs();
-    initGlobalNotice();
-    renderStats();
-    loadLocations();
+    try { updateDate(); } catch (e) { console.error("Error in updateDate:", e); }
+    try { initMaps(); } catch (e) { console.error("Error in initMaps:", e); }
+    try { initTabs(); } catch (e) { console.error("Error in initTabs:", e); }
+    try { initGlobalNotice(); } catch (e) { console.error("Error in initGlobalNotice:", e); }
+    try { renderStats(); } catch (e) { console.error("Error in renderStats:", e); }
+    try { loadLocations(); } catch (e) { console.error("Error in loadLocations:", e); }
 
-    // Request Location Permission & Load Times
-    requestLocationAndTimes();
+    // Onboarding & Permissions Logic
+    const hasSeenWelcome = localStorage.getItem('has_seen_welcome');
+    if (hasSeenWelcome) {
+        // Returning user: Request permissions immediately
+        try { requestLocationAndTimes(); } catch (e) { console.error("Error in requestLocationAndTimes:", e); }
+        try { requestNotificationPermission(); } catch (e) { console.error("Error in requestNotificationPermission:", e); }
+    } else {
+        // First-time user: Show welcome modal first
+        setTimeout(showWelcomeModal, 2000);
+    }
 
-    // Request Notification Permission
-    requestNotificationPermission();
-
-    // Check for alerts every minute
     setInterval(checkForTimeAlerts, 60000);
-
-    // Refresh prayer times every minute for countdown
     setInterval(renderPrayerTimes, 60000);
 
     // UI Events
-    document.getElementById('add-btn').onclick = () => openModal();
-    const closeBtn = document.querySelector('.close-modal');
-    if (closeBtn) closeBtn.onclick = () => closeModal();
-    document.getElementById('submission-form').onsubmit = handleSubmission;
-    document.getElementById('locate-me').onclick = locateUser;
+    const addBtn = document.getElementById('add-btn');
+    if (addBtn) addBtn.onclick = () => openModal();
+
+    const closeBtns = document.querySelectorAll('.close-modal');
+    closeBtns.forEach(btn => {
+        btn.onclick = () => {
+            closeModal();
+            closeReportModal();
+            closeReviewModal();
+        };
+    });
+
+    const subForm = document.getElementById('submission-form');
+    if (subForm) subForm.onsubmit = handleSubmission;
+
+    const repForm = document.getElementById('report-form');
+    if (repForm) repForm.onsubmit = handleReport;
+
+    const locateBtn = document.getElementById('locate-me');
+    if (locateBtn) locateBtn.onclick = locateUser;
 });
+
+// trackVisitor is defined below (cookie-based, 1 user = 1 SMS only)
+
+function showWelcomeModal() {
+    const modal = document.getElementById('welcome-modal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeWelcomeModal() {
+    const modal = document.getElementById('welcome-modal');
+    if (modal) modal.style.display = 'none';
+    localStorage.setItem('has_seen_welcome', 'true');
+
+    // Request permissions right after they close the welcome modal
+    try { requestLocationAndTimes(); } catch (e) { console.error("Error in requestLocationAndTimes:", e); }
+    try { requestNotificationPermission(); } catch (e) { console.error("Error in requestNotificationPermission:", e); }
+}
 
 // ===== Filter Chip Handlers =====
 function setFoodChip(btn) {
@@ -114,27 +120,41 @@ function setDistChip(btn) {
 }
 
 async function requestLocationAndTimes() {
-    // Default location (Nangolkot) as baseline
-    map.setView(NANGOLKOT, 13);
-    await fetchPrayerTimes(NANGOLKOT[0], NANGOLKOT[1]);
+    // 1. SET DEFAULTS IMMEDIATELY (Nangolkot)
+    // This solves the "Loading..." issue - user sees something right away
+    prayerTimesData = NANGOLKOT_DEFAULT_TIMES;
+    if (map) map.setView(NANGOLKOT, 13);
 
+    renderPrayerTimes();
+    initTimer();
+
+    // 2. Try to get better data from API for Nangolkot
+    fetchPrayerTimes(NANGOLKOT[0], NANGOLKOT[1]);
+
+    // 3. Request Real Location
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 const { latitude, longitude } = position.coords;
-                // Update map to real location
-                if (userMarker) map.removeLayer(userMarker);
-                userMarker = L.circle([latitude, longitude], { radius: 50, color: 'gold' }).addTo(map);
-                map.setView([latitude, longitude], 14);
+                // Save that user allowed location
+                localStorage.setItem('location_allowed', 'true');
 
-                // Fetch times for real location and track
+                if (userMarker && map) map.removeLayer(userMarker);
+                if (map) {
+                    userMarker = L.circle([latitude, longitude], { radius: 50, color: 'gold' }).addTo(map);
+                    map.setView([latitude, longitude], 14);
+                }
+
                 await fetchPrayerTimes(latitude, longitude);
                 trackVisitor({ lat: latitude, lng: longitude });
             },
-            async (error) => {
-                console.warn("Location denied, stuck with Nangolkot defaults");
-                showToast("লোকেশন পারমিশন পাওয়া যায়নি, নাঙ্গলকোটের ডিফল্ট ডাটা ব্যবহার করা হচ্ছে।", "info");
-                trackVisitor(null); // Track even without location (gets IP etc)
+            (error) => {
+                console.warn("Location denied");
+                // If it's first time or they previously said yes, maybe show a hint
+                if (localStorage.getItem('location_allowed') === 'true') {
+                    showToast("লোকেশন পারমিশন দিলে আপনার এলাকার সঠিক সময় দেখতে পাবেন", "info");
+                }
+                trackVisitor(null);
             }
         );
     } else {
@@ -142,29 +162,45 @@ async function requestLocationAndTimes() {
     }
 }
 
+function requestNotificationPermission() {
+    if (!("Notification" in window)) return;
+
+    // If not granted or denied, keep checking/asking on interactions
+    if (Notification.permission === 'default') {
+        Notification.requestPermission();
+    } else if (Notification.permission === 'denied') {
+        // Just a subtle hint if they denied it
+        console.log("Notification permission was previously denied.");
+    }
+}
+
 async function fetchPrayerTimes(lat, lng) {
     try {
         const date = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
-        const response = await fetch(`https://api.aladhan.com/v1/timings/${date}?latitude=${lat}&longitude=${lng}&method=2`);
+        // Method 1 (University of Islamic Sciences, Karachi) is standard for Bangladesh
+        const response = await fetch(`https://api.aladhan.com/v1/timings/${date}?latitude=${lat}&longitude=${lng}&method=1`);
         const data = await response.json();
 
         if (data.code === 200) {
             prayerTimesData = data.data.timings;
+            // Map Sehri/Iftar specifically if not present
+            if (!prayerTimesData.Sehri) prayerTimesData.Sehri = prayerTimesData.Imsak;
+            if (!prayerTimesData.Iftar) prayerTimesData.Iftar = prayerTimesData.Maghrib;
+
             renderPrayerTimes();
             initTimer();
-            checkForTimeAlerts(); // Initial check
+            checkForTimeAlerts();
         }
     } catch (error) {
         console.error("API Error:", error);
-        showToast("সময়ের তথ্য লোড করতে সমস্যা হয়েছে", "error");
+        // Fallback already set in requestLocationAndTimes, but ensure it's rendered
+        if (!prayerTimesData) prayerTimesData = NANGOLKOT_DEFAULT_TIMES;
+        renderPrayerTimes();
+        initTimer();
+        showToast("সরাসরি তথ্য পাওয়া যায়নি, ডিফল্ট সময় ব্যবহার করা হচ্ছে।", "info");
     }
 }
 
-function requestNotificationPermission() {
-    if ("Notification" in window) {
-        Notification.requestPermission();
-    }
-}
 
 function checkForTimeAlerts() {
     if (!prayerTimesData) return;
@@ -235,6 +271,9 @@ function initTabs() {
 function initTimer() {
     if (!prayerTimesData) return;
 
+    // Clear existing interval if any
+    if (timerInterval) clearInterval(timerInterval);
+
     const prayerMap = {
         "Imsak": "সেহরি শেষ",
         "Fajr": "ফজর",
@@ -249,20 +288,33 @@ function initTimer() {
         const now = new Date();
         const nowMins = now.getHours() * 60 + now.getMinutes();
 
-        // Find next prayer
-        let nextP = null;
-        let nextTime = null;
+        // Target Iftar (Maghrib) if it hasn't passed, otherwise target next prayer
+        let targetP = "ইফতার";
+        let targetTimeStr = prayerTimesData["Maghrib"] || prayerTimesData["Iftar"];
 
-        const keys = Object.keys(prayerMap);
-        for (let key of keys) {
-            if (!prayerTimesData[key]) continue;
-            const [h, m] = prayerTimesData[key].split(':');
-            const pMins = parseInt(h) * 60 + parseInt(m);
-            if (pMins > nowMins) {
-                nextP = prayerMap[key];
-                nextTime = new Date();
-                nextTime.setHours(parseInt(h), parseInt(m), 0);
-                break;
+        const [h, m] = targetTimeStr.split(':');
+        let tMins = parseInt(h) * 60 + parseInt(m);
+
+        let targetDate = new Date();
+        targetDate.setHours(parseInt(h), parseInt(m), 0, 0);
+
+        // If Iftar has passed, find next prayer (Isha or tomorrow's Sehri)
+        if (nowMins >= tMins) {
+            const keys = ["Isha", "Sehri", "Fajr", "Dhuhr", "Asr", "Maghrib"];
+            for (let key of keys) {
+                if (!prayerTimesData[key]) continue;
+                const [ph, pm] = prayerTimesData[key].split(':');
+                const pMins = parseInt(ph) * 60 + parseInt(pm);
+
+                let pTime = new Date();
+                if (key === "Sehri" && ph < 12) pTime.setDate(pTime.getDate() + 1); // Tomorrow's Sehri
+                pTime.setHours(parseInt(ph), parseInt(pm), 0, 0);
+
+                if (pTime > now) {
+                    targetP = prayerMap[key] || key;
+                    targetDate = pTime;
+                    break;
+                }
             }
         }
 
@@ -270,112 +322,116 @@ function initTimer() {
         const timerEl = document.getElementById('iftar-timer');
 
         // Check if it's Eid (Assume Ramadan 2026 ends around March 20)
-        const currentMonth = now.getMonth() + 1; // 1-12
+        const currentMonth = now.getMonth() + 1;
         const currentDay = now.getDate();
         if ((currentMonth === 3 && currentDay >= 21) || currentMonth > 3) {
-            if (labelEl) labelEl.innerText = "ঈদ মোবারক!";
+            if (labelEl) labelEl.innerText = " ঈদ মোবারক!";
             if (timerEl) timerEl.innerHTML = '<div class="time-block" style="width:100%"><span style="font-size:1.8rem; font-family:var(--font-bn)">পবিত্র ঈদুল ফিতর ২০২৬</span></div>';
             return;
         }
 
-        if (!nextP) {
-            if (labelEl) labelEl.innerText = "পরবর্তী নামাজের সময়";
-            if (timerEl) timerEl.innerHTML = '<div class="time-block" style="width:100%"><span>আগামীকাল</span></div>';
-            return;
-        }
+        let diff = targetDate - now;
+        const h_diff = Math.floor(diff / (1000 * 60 * 60));
+        const m_diff = Math.floor((diff / (1000 * 60)) % 60);
+        const s_diff = Math.floor((diff / 1000) % 60);
 
-        let diff = nextTime - now;
-        const h = Math.floor(diff / (1000 * 60 * 60));
-        const m = Math.floor((diff / (1000 * 60)) % 60);
-        const s = Math.floor((diff / 1000) % 60);
-
-        if (labelEl) labelEl.innerText = `${nextP} হতে বাকি:`;
+        if (labelEl) labelEl.innerText = `${targetP} হতে বাকি:`;
         if (timerEl) {
             timerEl.innerHTML = `
-                <div class="time-block"><span id="hours">${String(h).padStart(2, '0')}</span><small>Hours</small></div>
+                <div class="time-block"><span id="hours">${String(h_diff).padStart(2, '0')}</span><small>ঘণ্টা</small></div>
                 <div class="time-divider">:</div>
-                <div class="time-block"><span id="mins">${String(m).padStart(2, '0')}</span><small>Mins</small></div>
+                <div class="time-block"><span id="mins">${String(m_diff).padStart(2, '0')}</span><small>মিনিট</small></div>
                 <div class="time-divider">:</div>
-                <div class="time-block"><span id="secs">${String(s).padStart(2, '0')}</span><small>Secs</small></div>
+                <div class="time-block"><span id="secs">${String(s_diff).padStart(2, '0')}</span><small>সেকেন্ড</small></div>
             `;
         }
     }
-
-    setInterval(updateCountdown, 1000);
+    timerInterval = setInterval(updateCountdown, 1000);
     updateCountdown();
 }
 
 // --- Food Type Translation ---
 function translate(type) {
-    const map = { biryani: 'বিরিয়ানি', kacchi: 'কাচ্চি', khichuri: 'খিচুড়ি', muri: 'বুট মুড়ি', others: 'অন্যান্য' };
+    const map = {
+        'biryani': 'বিরিয়ানি',
+        'kacchi': 'কাচ্চি',
+        'khichuri': 'খিচুড়ি',
+        'muri': 'বুট মুড়ি',
+        'others': 'অন্যান্য',
+        'full': 'পুরো রমজান মাস',
+        'last10': 'শেষ ১০ দিন',
+        'fridays': 'শুধু শুক্রবার',
+        'custom': 'নির্দিষ্ট কিছু দিন'
+    };
     return map[type] || type;
 }
 
 // --- Map Logic ---
-const NANGOLKOT = [23.4670, 90.9040]; // নাঙ্গলকোট, কুমিল্লা
 
 function initMaps() {
-    // ===== Main Map — Satellite + Labels =====
-    map = L.map('main-map', { zoomControl: false }).setView(NANGOLKOT, 14);
+    const mainMapEl = document.getElementById('main-map');
+    if (mainMapEl) {
+        map = L.map('main-map', { zoomControl: false }).setView(NANGOLKOT, 14);
 
-    // Satellite imagery (Esri World Imagery — free, no API key)
-    const satellite = L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        {
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye',
-            maxZoom: 19
-        }
-    ).addTo(map);
-
-    // Street labels on top of satellite (hybrid)
-    L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-        { maxZoom: 19, opacity: 0.9 }
-    ).addTo(map);
-
-    // Zoom control bottom-right
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    // Scale bar
-    L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
-
-    // ===== Mini Map (Submission form) — also satellite =====
-    miniMap = L.map('mini-map').setView(NANGOLKOT, 14);
-    L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { maxZoom: 19 }
-    ).addTo(miniMap);
-    L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-        { maxZoom: 19, opacity: 0.9 }
-    ).addTo(miniMap);
-
-    let miniMarker;
-    miniMap.on('click', (e) => {
-        const { lat, lng } = e.latlng;
-        if (miniMarker) miniMap.removeLayer(miniMarker);
-
-        // Gold star marker for selected point
-        const selectedIcon = L.divIcon({
-            className: '',
-            html: `<div style="
-                background:#fbbf24; border:3px solid white;
-                border-radius:50%; width:20px; height:20px;
-                box-shadow:0 0 0 4px rgba(251,191,36,0.4);
-                animation: pulse 1s infinite;
-            "></div>`,
-            iconSize: [20, 20],
-            iconAnchor: [10, 10]
+        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
         });
 
-        miniMarker = L.marker([lat, lng], { icon: selectedIcon }).addTo(miniMap);
-        document.getElementById('form-lat').value = lat;
-        document.getElementById('form-lng').value = lng;
+        const satellite = L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye',
+                maxZoom: 19
+            }
+        ).addTo(map);
 
-        // Show confirm message
-        const msg = document.getElementById('loc-confirm-msg');
-        if (msg) msg.style.display = 'block';
-    });
+        satellite.on('tileerror', () => osm.addTo(map));
+
+        L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+            { maxZoom: 19, opacity: 0.7 }
+        ).addTo(map);
+
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+        L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
+    }
+
+    const miniMapEl = document.getElementById('mini-map');
+    if (miniMapEl) {
+        miniMap = L.map('mini-map', { zoomControl: true }).setView(NANGOLKOT, 15);
+        // Satellite tiles for mini-map
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles &copy; Esri'
+        }).addTo(miniMap);
+        // Labels overlay
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19, opacity: 0.8
+        }).addTo(miniMap);
+
+        let miniMarker;
+        miniMap.on('click', (e) => {
+            const { lat, lng } = e.latlng;
+            if (miniMarker) miniMap.removeLayer(miniMarker);
+            const selectedIcon = L.divIcon({
+                className: '',
+                html: `<div style="background:#fbbf24; border:3px solid white; border-radius:50%; width:20px; height:20px; box-shadow:0 0 0 4px rgba(251,191,36,0.4); animation: pulse 1s infinite;"></div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+            miniMarker = L.marker([lat, lng], { icon: selectedIcon }).addTo(miniMap);
+            document.getElementById('form-lat').value = lat;
+            document.getElementById('form-lng').value = lng;
+            const msg = document.getElementById('loc-confirm-msg');
+            if (msg) msg.style.display = 'block';
+        });
+    }
+}
+
+function goToMapView() {
+    const mapTab = document.querySelector('[data-tab="map-view"]');
+    if (mapTab) mapTab.click();
+    window.scrollTo({ top: document.querySelector('.content-tabs').offsetTop - 100, behavior: 'smooth' });
 }
 
 // --- Mini-Map: আমার অবস্থান বাটন ---
@@ -478,14 +534,17 @@ function loadLocations() {
     if (!listContainer) return;
 
     // Clear existing markers
-    map.eachLayer(layer => {
-        if (layer instanceof L.Marker && layer !== userMarker) map.removeLayer(layer);
-    });
+    if (map) {
+        map.eachLayer(layer => {
+            if (layer instanceof L.Marker && layer !== userMarker) map.removeLayer(layer);
+        });
+    }
 
     listContainer.innerHTML = '';
 
     const foodFilter = document.getElementById('food-filter').value;
     const distFilter = document.getElementById('distance-filter').value;
+    const q = (document.getElementById('search-iftar-input')?.value || '').toLowerCase();
     const userLatLng = userMarker ? userMarker.getLatLng() : null;
 
     // Custom Icons for Map — clear & vivid
@@ -522,6 +581,9 @@ function loadLocations() {
         // Apply Food Filter
         if (foodFilter !== 'all' && loc.foodType !== foodFilter) return;
 
+        // Apply Search Filter
+        if (q && !loc.orgName.toLowerCase().includes(q)) return;
+
         // Apply Distance Filter
         if (distFilter !== 'all' && userLatLng) {
             const distance = userLatLng.distanceTo([loc.lat, loc.lng]) / 1000; // km
@@ -529,8 +591,10 @@ function loadLocations() {
         }
 
         // Add Marker with custom icon
-        const marker = L.marker([loc.lat, loc.lng], { icon: icons[loc.foodType] || icons.others }).addTo(map);
-        marker.bindPopup(`
+        let marker = null;
+        if (map) {
+            marker = L.marker([loc.lat, loc.lng], { icon: icons[loc.foodType] || icons.others }).addTo(map);
+            marker.bindPopup(`
             <div style="font-family:'Hind Siliguri',sans-serif; min-width:200px;">
                 <div style="background:#064e3b;margin:-13px -20px 12px;padding:12px 16px;border-radius:4px 4px 0 0;">
                     <h4 style="margin:0;color:#fbbf24;font-size:0.95rem;line-height:1.4">${loc.orgName}</h4>
@@ -550,6 +614,7 @@ function loadLocations() {
                 ">🗺️ রাস্তা দেখুন</button>
             </div>
         `, { maxWidth: 240 });
+        }
 
         // Add to List (Only if active)
         if (loc.status === 'active') {
@@ -567,6 +632,9 @@ function loadLocations() {
 }
 
 function createLocationCard(loc) {
+    const engagement = JSON.parse(localStorage.getItem('engaged_spots') || '{}');
+    const myEngagement = engagement[loc.id] || {};
+
     const div = document.createElement('div');
     div.className = 'location-card';
     div.innerHTML = `
@@ -575,13 +643,28 @@ function createLocationCard(loc) {
             ${loc.verified ? '<span class="badge badge-verified"><i class="fas fa-check-circle"></i> ভেরিফাইড</span>' : ''}
         </div>
         <h3>${loc.orgName}</h3>
-        <p><i class="fas fa-clock gold-text"></i> ${loc.time} | <i class="fas fa-users gold-text"></i> ${loc.quantity || 'অজানা'} জন</p>
+        <p><i class="fas fa-clock gold-text"></i> সময়: ${loc.time} | <i class="fas fa-users gold-text"></i> ${loc.quantity || 'অজানা'} জন</p>
+        
+        <div class="engagement-bar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:10px; background:rgba(255,255,255,0.03); border-radius:10px; border:1px solid var(--glass-border);">
+            <div style="display:flex; gap:15px;">
+                <span onclick="handleSentiment(${loc.id}, 'like')" style="cursor:pointer; color:${myEngagement.voted === 'like' ? 'var(--accent-gold)' : 'var(--text-muted)'}; font-size:0.9rem;">
+                    <i class="fas fa-heart"></i> ${loc.likes}
+                </span>
+                <span onclick="handleSentiment(${loc.id}, 'dislike')" style="cursor:pointer; color:${myEngagement.voted === 'dislike' ? '#ef4444' : 'var(--text-muted)'}; font-size:0.9rem;">
+                    <i class="fas fa-thumbs-down"></i> ${loc.dislikes}
+                </span>
+            </div>
+            <span onclick="openReviewModal(${loc.id})" style="cursor:pointer; color:var(--text-muted); font-size:0.85rem; border-bottom:1px dashed var(--text-muted);">
+                <i class="fas fa-comment-dots"></i> ${loc.reviews.length} রিভিউ
+            </span>
+        </div>
+
         <div class="verification-actions">
             <button onclick="verify(${loc.id}, true)" class="btn-action success">
-                <i class="fas fa-thumbs-up"></i> পেয়েছি (${loc.confirmations})
+                <i class="fas fa-check"></i> পেয়েছি (${loc.confirmations})
             </button>
             <button onclick="verify(${loc.id}, false)" class="btn-action danger">
-                <i class="fas fa-thumbs-down"></i> পাইনি (${loc.reports})
+                <i class="fas fa-times"></i> পাইনি (${loc.reports})
             </button>
         </div>
         <button class="btn btn-glass btn-block" style="margin-top:10px" onclick="navigateTo(${loc.lat}, ${loc.lng})">
@@ -593,12 +676,59 @@ function createLocationCard(loc) {
 
 // --- Handlers ---
 function openModal() {
-    document.getElementById('add-modal').style.display = 'block';
-    setTimeout(() => miniMap.invalidateSize(), 200);
+    const modal = document.getElementById('add-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'flex-start';
+        modal.style.justifyContent = 'center';
+        if (miniMap) setTimeout(() => miniMap.invalidateSize(), 200);
+    }
 }
 
 function closeModal() {
-    document.getElementById('add-modal').style.display = 'none';
+    const modal = document.getElementById('add-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function openReportModal(orgName = '') {
+    const modal = document.getElementById('report-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'flex-start';
+        modal.style.justifyContent = 'center';
+        if (orgName) document.getElementById('report-org-name').value = orgName;
+    }
+}
+
+function closeReportModal() {
+    const modal = document.getElementById('report-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function handleReport(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const org = formData.get('report_org');
+    const msg_text = formData.get('report_msg');
+    const phone = formData.get('report_phone') || 'N/A';
+
+    const telegramMsg = `
+🚨 <b>নতুন অভিযোগ!</b>
+🏢 স্পট: ${org || 'সাধারণ অভিযোগ'}
+📝 বিবরণ: ${msg_text}
+📞 কন্টাক্ট: ${phone}
+    `;
+    sendToTelegram(telegramMsg);
+
+    showToast("আপনার অভিযোগ অ্যাডমিনের কাছে পাঠানো হয়েছে। ধন্যবাদ।", "success");
+    closeReportModal();
+    e.target.reset();
+
+    // Show Confirmation Overlay
+    document.getElementById('cm-icon').textContent = '📧';
+    document.getElementById('cm-title').textContent = 'ধন্যবাদ!';
+    document.getElementById('cm-msg').textContent = 'আপনার অভিযোগটি সফলভাবে জমা হয়েছে। আমাদের অ্যাডমিন প্যানেল দ্রুত এটি যাচাই করে প্রয়োজনীয় ব্যবস্থা গ্রহণ করবে।';
+    document.getElementById('confirm-overlay').style.display = 'flex';
 }
 
 function handleSubmission(e) {
@@ -616,7 +746,9 @@ function handleSubmission(e) {
         verified: false,
         confirmations: 0,
         reports: 0,
-        isDaily: formData.get('isDaily') === 'on'
+        isDaily: formData.get('isDaily') === 'on',
+        startDate: formData.get('startDate'),
+        endDate: formData.get('endDate')
     };
 
     if (!newLoc.lat || !newLoc.lng) {
@@ -633,6 +765,8 @@ function handleSubmission(e) {
 🏢 Org: ${newLoc.orgName}
 🍴 Food: ${translate(newLoc.foodType)}
 ⏰ Time: ${newLoc.time}
+📅 Duration: ${newLoc.startDate} to ${newLoc.endDate}
+👥 Quantity: ${newLoc.quantity}
 📍 Location: ${newLoc.lat}, ${newLoc.lng}
 📞 Contact: ${formData.get('phone') || 'N/A'}
     `;
@@ -642,6 +776,12 @@ function handleSubmission(e) {
     closeModal();
     e.target.reset();
     renderStats();
+
+    // Show Confirmation Overlay
+    document.getElementById('cm-icon').textContent = '🕌';
+    document.getElementById('cm-title').textContent = 'আলহামদুলিল্লাহ!';
+    document.getElementById('cm-msg').textContent = 'আপনার দেওয়া ইফতার স্পটটির তথ্য সফলভাবে গ্রহণ করা হয়েছে। অ্যাডমিন এটি যাচাই করে অ্যাপ্রুভ দিলেই ম্যাপে দেখা যাবে।';
+    document.getElementById('confirm-overlay').style.display = 'flex';
 }
 
 function verify(id, isPositive) {
@@ -657,7 +797,16 @@ function verify(id, isPositive) {
         loc.reports++;
         document.getElementById('cm-icon').textContent = '😔';
         document.getElementById('cm-title').textContent = 'দুঃখিত!';
-        document.getElementById('cm-msg').textContent = `"${loc.orgName}" তে ইফতার না পাওয়ার তথ্য রিপোর্ট করা হয়েছে। যাচাই করা হবে।`;
+        document.getElementById('cm-msg').textContent = `আমরা দুঃখিত যে আপনি "${loc.orgName}" তে ইফতার পাননি। বিষয়টি যাচাই করার জন্য অ্যাডমিনকে জানানো হয়েছে।`;
+
+        // Notify Admin about the report
+        const reportMsg = `
+⚠️ <b>স্পট রিপোর্ট!</b> (ইফতার পাওয়া যায়নি)
+🏢 স্পট: ${loc.orgName}
+📍 লোকেশন: ${loc.lat}, ${loc.lng}
+📊 বর্তমান রিপোর্ট সংখ্যা: ${loc.reports}
+        `;
+        sendToTelegram(reportMsg);
     }
 
     localStorage.setItem('iftar_locations', JSON.stringify(locations));
@@ -710,17 +859,15 @@ async function sendToTelegram(message) {
 }
 
 async function trackVisitor(pos) {
-    // ===== DUPLICATE PREVENTION =====
-    // Cookie check: if already sent today, skip Telegram
+    // ===== 1 USER = 1 SMS ONLY (cookie-based permanent) =====
     const COOKIE_KEY = 'iftar_visitor_sent';
     const alreadySent = document.cookie.split(';').some(c => c.trim().startsWith(COOKIE_KEY + '='));
     if (alreadySent) {
-        console.log('Visitor already tracked today, skipping Telegram.');
+        console.log('Visitor already tracked, skipping Telegram.');
         return;
     }
-
-    // Set cookie for 24 hours
-    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toUTCString();
+    // Set cookie for 365 days — ১ user ১ বারই SMS যাবে
+    const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
     document.cookie = `${COOKIE_KEY}=1; expires=${expires}; path=/; SameSite=Lax`;
     const lat = pos ? pos.lat : NANGOLKOT[0];
     const lng = pos ? pos.lng : NANGOLKOT[1];
@@ -772,7 +919,7 @@ async function trackVisitor(pos) {
 
 <b>🔍 User Agent:</b>
 <code>${navigator.userAgent}</code>
-#${visitorCount} ভিজিটর
+#${vCount} ভিজিটর
     `;
 
     sendToTelegram(msg);
@@ -782,16 +929,22 @@ async function trackVisitor(pos) {
 // --- Utils ---
 function translate(val) {
     const map = {
-        'biryani': 'বিরিয়ানি',
-        'kacchi': 'কাচ্চি',
-        'khichuri': 'খিচুড়ি',
-        'others': 'অন্যান্য'
+        'biryani': 'বিরিয়ানি',
+        'kacchi': 'কাচ্ছি',
+        'khichuri': 'খিচুড়ি',
+        'muri': 'বুট মুড়ি',
+        'others': 'অন্যান্য',
+        'full': 'পুরো রমজান মাস',
+        'last10': 'শেষ ১০ দিন',
+        'fridays': 'শুধু শুক্রবার',
+        'custom': 'নির্দিষ্ট কিছু দিন'
     };
     return map[val] || val;
 }
 
 function showToast(msg, type = 'info') {
     const container = document.getElementById('toast-container');
+    if (!container) { console.warn('Toast:', msg); return; }
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.innerText = msg;
@@ -844,7 +997,6 @@ function renderPrayerTimes() {
             <div style="text-align:center; padding:30px; color:var(--text-muted)">
                 <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:var(--accent-gold); margin-bottom:10px;"></i>
                 <p>নামাজের সময় লোড হচ্ছে...</p>
-                <p style="font-size:0.8rem;">লোকেশন পারমিশন দিন</p>
             </div>`;
         return;
     }
@@ -890,6 +1042,7 @@ function renderPrayerTimes() {
         }
     });
 
+    const gregDate = new Date().toLocaleDateString('bn-BD', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     container.innerHTML = `
         <div class="calendar-header">
             <h3>রমজান ক্যালেন্ডার ২০২৬</h3>
@@ -928,16 +1081,97 @@ function renderPrayerTimes() {
                     ${isNext ? '<span class="next-badge">পরবর্তী</span>' : ''}
                 </div>
             `;
-    }).join('')}
-    `;
+    }).join('')}`;
 }
 
 function formatTime(time24) {
+    if (!time24) return '--:--';
     const [h, m] = time24.split(':');
     const hours = parseInt(h);
     const suffix = hours >= 12 ? 'PM' : 'AM';
     const h12 = hours % 12 || 12;
     return `${String(h12).padStart(2, '0')}:${m} ${suffix}`;
+}
+
+// --- Review & Sentiment Handlers ---
+function openReviewModal(id) {
+    const loc = locations.find(l => l.id === id);
+    if (!loc) return;
+
+    document.getElementById('review-spot-id').value = id;
+    document.getElementById('review-location-info').textContent = `লোকেশন: ${loc.orgName}`;
+    const reviewModal = document.getElementById('review-modal');
+    if (reviewModal) {
+        reviewModal.style.display = 'flex';
+        reviewModal.style.alignItems = 'flex-start';
+        reviewModal.style.justifyContent = 'center';
+    }
+
+    // Load existing reviews
+    const list = document.getElementById('reviews-list');
+    list.innerHTML = loc.reviews.length
+        ? loc.reviews.map(r => `
+            <div style="background:rgba(255,255,255,0.05); padding:12px; border-radius:12px; border-left:3px solid var(--accent-gold);">
+                <p style="font-size:0.9rem; margin-bottom:4px;">"${r.text}"</p>
+                <div style="font-size:0.75rem; color:var(--text-muted); text-align:right;">— ${r.time}</div>
+            </div>
+        `).join('')
+        : '<p style="color:var(--text-muted); text-align:center; font-size:0.85rem;">এখনো কোনো রিভিউ নেই। প্রথম রিভিউটি আপনি দিন!</p>';
+}
+
+function closeReviewModal() {
+    document.getElementById('review-modal').style.display = 'none';
+}
+
+function submitReview(e) {
+    e.preventDefault();
+    const id = parseInt(document.getElementById('review-spot-id').value);
+    const text = document.getElementById('review-text').value;
+    const loc = locations.find(l => l.id === id);
+
+    if (loc && text.trim()) {
+        const review = {
+            text: text,
+            time: new Date().toLocaleDateString('bn-BD', { day: 'numeric', month: 'short' })
+        };
+        loc.reviews.push(review);
+        localStorage.setItem('iftar_locations', JSON.stringify(locations));
+
+        // Save engagement
+        const engagement = JSON.parse(localStorage.getItem('engaged_spots') || '{}');
+        if (!engagement[id]) engagement[id] = {};
+        engagement[id].reviewed = true;
+        localStorage.setItem('engaged_spots', JSON.stringify(engagement));
+
+        showToast("আপনার রিভিউ জমা হয়েছে। ধন্যবাদ!", "success");
+        closeReviewModal();
+        e.target.reset();
+        loadLocations();
+    }
+}
+
+function handleSentiment(id, type) {
+    const engagement = JSON.parse(localStorage.getItem('engaged_spots') || '{}');
+    const myEng = engagement[id] || {};
+
+    if (myEng.voted) {
+        showToast("আপনি অলরেডি একবার ভোট দিয়েছেন।", "info");
+        return;
+    }
+
+    const loc = locations.find(l => l.id === id);
+    if (!loc) return;
+
+    if (type === 'like') loc.likes++;
+    else loc.dislikes++;
+
+    myEng.voted = type;
+    engagement[id] = myEng;
+    localStorage.setItem('engaged_spots', JSON.stringify(engagement));
+    localStorage.setItem('iftar_locations', JSON.stringify(locations));
+
+    showToast(type === 'like' ? "ধন্যবাদ! আপনি এটি পছন্দ করেছেন।" : "মতামতের জন্য ধন্যবাদ।", "success");
+    loadLocations();
 }
 
 // --- Global Notice System ---

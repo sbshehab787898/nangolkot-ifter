@@ -358,6 +358,18 @@
             color: white;
         }
 
+        .act-edit {
+            background: rgba(251, 191, 36, 0.1);
+            color: var(--accent-gold);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            margin-right: 4px;
+        }
+
+        .act-edit:hover {
+            background: var(--accent-gold);
+            color: #064e3b;
+        }
+
         .act-delete {
             background: rgba(239, 68, 68, 0.1);
             color: #ef4444;
@@ -367,6 +379,67 @@
         .act-delete:hover {
             background: #ef4444;
             color: white;
+        }
+
+        /* Modal for Editing */
+        .admin-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .admin-modal-content {
+            background: var(--secondary-dark);
+            border: 1px solid var(--accent-gold);
+            border-radius: 20px;
+            padding: 24px;
+            max-width: 450px;
+            width: 100%;
+            box-shadow: var(--shadow-premium);
+        }
+
+        .admin-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .admin-modal-header h2 {
+            font-size: 1.2rem;
+            color: var(--accent-gold);
+            margin: 0;
+        }
+
+        .admin-form-group {
+            margin-bottom: 15px;
+        }
+
+        .admin-form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .admin-form-group input,
+        .admin-form-group select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: white;
+            font-family: var(--font-bn);
         }
 
         /* Notice */
@@ -586,6 +659,7 @@
         const ADMIN_PASS = '787898';
         let failCount = 0;
         let blocked = false;
+        let locations = JSON.parse(localStorage.getItem('iftar_locations') || '[]');
 
         // ============================================================
         //  Auto-check session
@@ -594,6 +668,9 @@
             if (sessionStorage.getItem('admin_ok') === '1') {
                 showDashboard();
             }
+
+            // Set up edit form handler
+            document.getElementById('edit-form').onsubmit = saveEdit;
         };
 
         // ============================================================
@@ -693,8 +770,9 @@
                         <td>${foodMap[loc.foodType] || loc.foodType}</td>
                         <td class="${loc.status === 'active' ? 's-active' : 's-pending'}">${loc.status === 'active' ? '✅ সক্রিয়' : '⏳ পেন্ডিং'}</td>
                         <td>${loc.reports}</td>
-                        <td>
-                            ${loc.status === 'pending' ? `<button class="act-btn act-approve" onclick="approveLocation(${loc.id})"><i class="fas fa-check"></i> অনুমোদন</button>` : ''}
+                        <td style="white-space:nowrap">
+                            ${loc.status === 'pending' ? `<button class="act-btn act-approve" onclick="approveLocation(${loc.id})"><i class="fas fa-check"></i></button>` : ''}
+                            <button class="act-btn act-edit" onclick="editLocation(${loc.id})"><i class="fas fa-edit"></i></button>
                             <button class="act-btn act-delete" onclick="deleteLocation(${loc.id})"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
@@ -716,18 +794,49 @@
         }
 
         function approveLocation(id) {
-            let locs = JSON.parse(localStorage.getItem('iftar_locations') || '[]');
-            const loc = locs.find(l => l.id === id);
+            const loc = locations.find(l => l.id === id);
             if (loc) { loc.status = 'active'; loc.verified = true; }
-            localStorage.setItem('iftar_locations', JSON.stringify(locs));
+            localStorage.setItem('iftar_locations', JSON.stringify(locations));
             loadAdminData();
         }
 
         function deleteLocation(id) {
             if (!confirm('এই স্পটটি মুছে ফেলবেন?')) return;
-            let locs = JSON.parse(localStorage.getItem('iftar_locations') || '[]');
-            locs = locs.filter(l => l.id !== id);
-            localStorage.setItem('iftar_locations', JSON.stringify(locs));
+            locations = locations.filter(l => l.id !== id);
+            localStorage.setItem('iftar_locations', JSON.stringify(locations));
+            loadAdminData();
+        }
+
+        function editLocation(id) {
+            const loc = locations.find(l => l.id === id);
+            if (!loc) return;
+
+            document.getElementById('edit-id').value = loc.id;
+            document.getElementById('edit-name').value = loc.orgName;
+            document.getElementById('edit-food').value = loc.foodType;
+            document.getElementById('edit-time').value = loc.time;
+            document.getElementById('edit-quantity').value = loc.quantity || '';
+
+            document.getElementById('edit-modal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+        }
+
+        function saveEdit(e) {
+            e.preventDefault();
+            const id = parseInt(document.getElementById('edit-id').value);
+            const loc = locations.find(l => l.id === id);
+            if (!loc) return;
+
+            loc.orgName = document.getElementById('edit-name').value;
+            loc.foodType = document.getElementById('edit-food').value;
+            loc.time = document.getElementById('edit-time').value;
+            loc.quantity = document.getElementById('edit-quantity').value;
+
+            localStorage.setItem('iftar_locations', JSON.stringify(locations));
+            closeEditModal();
             loadAdminData();
         }
 

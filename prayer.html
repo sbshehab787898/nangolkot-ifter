@@ -682,7 +682,7 @@
                 <div class="d-divider"></div>
                 <div style="text-align:right">
                     <div class="d-label">পদ্ধতি</div>
-                    <div class="d-val">Islamic Society</div>
+                    <div class="d-val">Islamic Sciences (KHI)</div>
                 </div>
             </div>
 
@@ -744,7 +744,20 @@
             { key: 'Isha', label: 'এশা ও তারাবি', sub: 'ফরজ ও নফল', icon: '🕌', cls: '' },
         ];
 
-        let timingsData = null;
+        // Default Static Times for Nangolkot (Fallback)
+        const NANGOLKOT_DEFAULT_TIMES = {
+            "Fajr": "04:56",
+            "Sunrise": "06:12",
+            "Dhuhr": "12:10",
+            "Asr": "15:30",
+            "Sunset": "18:05",
+            "Maghrib": "18:05",
+            "Isha": "19:20",
+            "Imsak": "04:46"
+        };
+        const NANGOLKOT = [23.4670, 90.9040]; // Coordinates for Nangolkot
+
+        let timingsData = NANGOLKOT_DEFAULT_TIMES; // Initialize with Nangolkot Defaults to avoid "Loading..." flicker
         let nextKey = null;
         let countdownInterval = null;
 
@@ -754,12 +767,16 @@
         window.addEventListener('DOMContentLoaded', () => {
             updateDates();
             checkNotifPermission();
+            renderAll(); // Render immediately with the pre-initialized defaults
 
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(gotPosition, useDefault, { timeout: 8000 });
+                navigator.geolocation.getCurrentPosition(gotPosition, useDefault, { timeout: 10000 });
             } else {
-                useDefault();
+                useDefault(); // If no geolocation, directly use default
             }
+
+            // Set current year in footer
+            document.getElementById('current-year').textContent = new Date().getFullYear();
         });
 
         function gotPosition(pos) {
@@ -769,8 +786,10 @@
         }
 
         function useDefault() {
-            document.getElementById('location-label').textContent = 'ঢাকা (ডিফল্ট)';
-            fetchTimes(23.8103, 90.4125);
+            document.getElementById('location-label').textContent = 'নাঙ্গলকোট (ডিফল্ট)';
+            // timingsData is already NANGOLKOT_DEFAULT_TIMES, so no need to re-assign
+            // renderAll() is already called on DOMContentLoaded
+            fetchTimes(NANGOLKOT[0], NANGOLKOT[1]); // Fetch Nangolkot times from API
         }
 
         function reloadLocation() {
@@ -788,7 +807,8 @@
         async function fetchTimes(lat, lng) {
             try {
                 const date = new Date().toLocaleDateString('en-GB').split('/').reverse().join('-');
-                const res = await fetch(`https://api.aladhan.com/v1/timings/${date}?latitude=${lat}&longitude=${lng}&method=2`);
+                // Method 1 for Bangladesh
+                const res = await fetch(`https://api.aladhan.com/v1/timings/${date}?latitude=${lat}&longitude=${lng}&method=1`);
                 const data = await res.json();
 
                 if (data.code === 200) {
@@ -798,13 +818,16 @@
                         `${hijri.day} ${hijri.month.en} ${hijri.year}`;
 
                     document.getElementById('prayer-loading').style.display = 'none';
-                    renderCards();
-                    startCountdown();
+                    renderAll();
                 } else {
                     showError();
                 }
-            } catch {
-                showError();
+            } catch (err) {
+                console.error(err);
+                if (!timingsData) timingsData = NANGOLKOT_DEFAULT_TIMES;
+                document.getElementById('prayer-loading').style.display = 'none';
+                renderAll();
+                showToast("সার্ভার থেকে তথ্য পাওয়া যায়নি, ডিফল্ট সময় দেখাচ্ছি।", "info");
             }
         }
 
@@ -823,8 +846,13 @@
         }
 
         // ============================================================
-        //  Render Cards
+        //  Render
         // ============================================================
+        function renderAll() {
+            renderCards();
+            startCountdown();
+        }
+
         function renderCards() {
             if (!timingsData) return;
             const now = new Date();
@@ -979,6 +1007,48 @@
             setTimeout(() => t.remove(), 3500);
         }
     </script>
+    <footer class="main-footer"
+        style="margin-top: 60px; padding: 60px 0 40px; background: rgba(0,0,0,0.3); border-top: 1px solid var(--glass-border);">
+        <div class="container">
+            <div class="footer-content" style="max-width: 800px; margin: 0 auto; text-align: center;">
+                <div class="dev-info" style="margin-bottom: 30px;">
+                    <span
+                        style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; display: block; margin-bottom: 15px;">Developed
+                        & Maintained by</span>
+                    <div
+                        style="display: inline-flex; flex-direction: column; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); padding: 25px 35px; border-radius: 24px; backdrop-filter: blur(10px);">
+                        <span
+                            style="font-weight: 800; color: white; font-size: 1.4rem; font-family: var(--font-en); margin-bottom: 4px;">S.B
+                            Shehab</span>
+                        <span
+                            style="font-size: 0.85rem; color: var(--accent-gold); margin-bottom: 18px; font-weight: 500;">Full
+                            Stack Developer & UI Designer</span>
+                        <div style="display: flex; gap: 12px;">
+                            <a href="https://www.facebook.com/sbshehab2004" target="_blank" rel="noopener"
+                                style="color: white; text-decoration: none; background: #1877F2; padding: 8px 18px; border-radius: 12px; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; transition: 0.3s; box-shadow: 0 4px 12px rgba(24, 119, 242, 0.3);">
+                                <i class="fab fa-facebook"></i> Facebook
+                            </a>
+                            <a href="mailto:sbshehab2004@gmail.com"
+                                style="color: white; text-decoration: none; background: #EA4335; padding: 8px 18px; border-radius: 12px; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; transition: 0.3s; box-shadow: 0 4px 12px rgba(234, 67, 53, 0.3);">
+                                <i class="fas fa-envelope"></i> Email
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="footer-links"
+                    style="justify-content: center; gap: 24px; margin-bottom: 16px; display: flex;">
+                    <a href="about.html" style="color: white; text-decoration: none; font-size: 0.9rem;">আমাদের
+                        সম্পর্কে</a>
+                    <a href="privacy.html" style="color: white; text-decoration: none; font-size: 0.9rem;">প্রাইভেসি
+                        পলিসি</a>
+                </div>
+                <p style="color: rgba(255,255,255,0.4); font-size: 0.85rem; line-height: 1.6;">
+                    &copy; ২০২৬ <span style="color: var(--accent-gold); font-weight: 700;">বিরিয়ানি দিবে</span><br />
+                    জনস্বার্থে একটি সেবামূলক প্ল্যাটফর্ম | নাঙ্গলকোট, কুমিল্লা
+                </p>
+            </div>
+        </div>
+    </footer>
 </body>
 
 </html>
