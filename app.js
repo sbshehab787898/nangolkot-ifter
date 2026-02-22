@@ -46,13 +46,13 @@ if (_rawLoc === null) {
         },
         {
             id: 3,
-            orgName: "s.akfnalikrfgawerg",
+            orgName: "নাঙ্গলকোট অনাথাশ্রম",
             foodType: "muri",
             date: "2026-03-01",
             time: "18:15",
-            quantity: 0, // অজানা জন
-            lat: 23.7500,
-            lng: 90.3800,
+            quantity: "অজানা",
+            lat: 23.4680,
+            lng: 90.9060,
             status: "active",
             verified: true,
             confirmations: 5,
@@ -430,6 +430,8 @@ function loadLocations() {
     listContainer.innerHTML = '';
 
     const foodFilter = document.getElementById('food-filter').value;
+    const distFilter = document.getElementById('distance-filter').value;
+    const userLatLng = userMarker ? userMarker.getLatLng() : null;
 
     // Custom Icons for Map — clear & vivid
     const createIcon = (emoji, color) => L.divIcon({
@@ -462,8 +464,14 @@ function loadLocations() {
     let visibleCount = 0;
 
     locations.forEach(loc => {
-        // Apply Filter
+        // Apply Food Filter
         if (foodFilter !== 'all' && loc.foodType !== foodFilter) return;
+
+        // Apply Distance Filter
+        if (distFilter !== 'all' && userLatLng) {
+            const distance = userLatLng.distanceTo([loc.lat, loc.lng]) / 1000; // km
+            if (distance > parseInt(distFilter)) return;
+        }
 
         // Add Marker with custom icon
         const marker = L.marker([loc.lat, loc.lng], { icon: icons[loc.foodType] || icons.others }).addTo(map);

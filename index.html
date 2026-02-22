@@ -147,45 +147,47 @@
 
             <div class="tab-content hidden" id="list-view">
                 <!-- Filter Bar -->
-                <div style="padding:12px 0 8px;">
-                    <!-- Food Type Filter -->
-                    <div style="margin-bottom:8px;">
-                        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:6px;">খাবারের ধরন:</div>
-                        <div style="display:flex;gap:6px;flex-wrap:wrap;" id="food-chips">
-                            <button class="fchip active" data-val="all" onclick="setFoodChip(this)">সব</button>
-                            <button class="fchip" data-val="biryani" onclick="setFoodChip(this)">🍛
-                                বিরিয়ানি</button>
-                            <button class="fchip" data-val="kacchi" onclick="setFoodChip(this)">🍖 কাচ্চি</button>
-                            <button class="fchip" data-val="khichuri" onclick="setFoodChip(this)">🥘
-                                খিচুড়ি</button>
-                            <button class="fchip" data-val="muri" onclick="setFoodChip(this)">🍚 বুট মুড়ি</button>
-                            <button class="fchip" data-val="others" onclick="setFoodChip(this)">🍽️
-                                অন্যান্য</button>
-                        </div>
+                <!-- Filter Groups -->
+                <div style="margin-bottom:12px;">
+                    <div
+                        style="font-size:0.8rem;color:var(--accent-gold);font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                        <i class="fas fa-filter"></i> খাবারের ধরন:
                     </div>
-                    <!-- Distance Filter -->
-                    <div>
-                        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:6px;">দূরত্ব:</div>
-                        <div style="display:flex;gap:6px;">
-                            <button class="dchip active" data-val="all" onclick="setDistChip(this)">সব</button>
-                            <button class="dchip" data-val="5" onclick="setDistChip(this)">৫ কিমি</button>
-                            <button class="dchip" data-val="10" onclick="setDistChip(this)">১০ কিমি</button>
-                        </div>
+                    <div class="chip-container" id="food-chips">
+                        <button class="fchip active" data-val="all" onclick="setFoodChip(this)">সব</button>
+                        <button class="fchip" data-val="biryani" onclick="setFoodChip(this)">🍛 বিরিয়ানি</button>
+                        <button class="fchip" data-val="kacchi" onclick="setFoodChip(this)">🍖 কাচ্চি</button>
+                        <button class="fchip" data-val="khichuri" onclick="setFoodChip(this)">🥘 খিচুড়ি</button>
+                        <button class="fchip" data-val="muri" onclick="setFoodChip(this)">🍚 বুট মুড়ি</button>
+                        <button class="fchip" data-val="others" onclick="setFoodChip(this)">🍽️ অন্যান্য</button>
                     </div>
-                    <!-- Hidden inputs for JS compatibility -->
-                    <select id="food-filter" style="display:none">
-                        <option value="all">all</option>
-                    </select>
-                    <select id="distance-filter" style="display:none">
-                        <option value="all">all</option>
-                    </select>
                 </div>
+                <!-- Distance Filter -->
+                <div
+                    style="font-size:0.8rem;color:var(--accent-gold);font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                    <i class="fas fa-map-pin"></i> দূরত্ব (আপনার অবস্থান থেকে):
+                </div>
+                <div class="chip-container" id="dist-chips">
+                    <button class="dchip active" data-val="all" onclick="setDistChip(this)">সব</button>
+                    <button class="dchip" data-val="1" onclick="setDistChip(this)">১ কিমি</button>
+                    <button class="dchip" data-val="5" onclick="setDistChip(this)">৫ কিমি</button>
+                    <button class="dchip" data-val="10" onclick="setDistChip(this)">১০ কিমি</button>
+                    <button class="dchip" data-val="20" onclick="setDistChip(this)">২০ কিমি</button>
+                </div>
+                <!-- Hidden inputs for JS compatibility -->
+                <select id="food-filter" style="display:none">
+                    <option value="all">all</option>
+                </select>
+                <select id="distance-filter" style="display:none">
+                    <option value="all">all</option>
+                </select>
+            </div>
 
-                <div id="location-list" class="location-grid">
-                    <!-- Cards will be injected here -->
-                    <div class="skeleton-card"></div>
-                    <div class="skeleton-card"></div>
-                </div>
+            <div id="location-list" class="location-grid">
+                <!-- Cards will be injected here -->
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+            </div>
             </div>
 
             <div class="tab-content hidden" id="prayer-times">
