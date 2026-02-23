@@ -22,6 +22,7 @@ let map, miniMap, userMarker, userLatLng;
 let prayerTimesData = null; // Will be set after NANGOLKOT_DEFAULT_TIMES is defined
 let notificationSent = {};
 let timerInterval = null;
+let currentVisitLogId = null;
 
 // Default Static Times for Nangolkot (Fallback)
 const NANGOLKOT_DEFAULT_TIMES = {
@@ -30,10 +31,57 @@ const NANGOLKOT_DEFAULT_TIMES = {
     "Sehri": "04:46", "Iftar": "18:05"
 };
 
+// --- Audio Configuration ---
+const AZAN_URL = "https://raw.githubusercontent.com/islamic-network/cdn/master/audio/adhan/makkah.mp3";
+const IFTAR_MSG_URL = "https://files.catbox.moe/kpk2nu.mp3"; // High quality Iftar alert
+const SEHRI_MSG_URL = "https://files.catbox.moe/97p16d.mp3"; // High quality Sehri alert
+
+function playAlertSound(type) {
+    let url = AZAN_URL;
+    if (type === 'iftar') {
+        if (!siteSettings.alerts_enabled) return;
+        url = IFTAR_MSG_URL;
+    } else if (type === 'sehri') {
+        if (!siteSettings.alerts_enabled) return;
+        url = SEHRI_MSG_URL;
+    } else if (type === 'azan') {
+        if (!siteSettings.azan_enabled) return;
+        url = AZAN_URL;
+    }
+
+    const audio = new Audio(url);
+    audio.play().catch(e => {
+        console.warn("Audio blocked by browser. Click anywhere on page to enable.", e);
+        showToast("নামাজের সময় হয়েছে! অডিও শুনতে স্ক্রিনে একবার টাচ করুন।", "info");
+    });
+}
+
+// Global audio unlock for background playback
+document.addEventListener('click', () => {
+    // This empty click handler helps "unlock" audio context for most browsers
+}, { once: false });
+
 const NANGOLKOT = [23.4670, 90.9040];
 
 // --- Global State ---
 let locations = [];
+let siteSettings = {
+    azan_enabled: true,
+    alerts_enabled: true
+};
+
+async function fetchSiteSettings() {
+    if (!supabaseClient) return;
+    try {
+        const { data } = await supabaseClient.from('site_config').select('id, value');
+        if (data) {
+            data.forEach(item => {
+                if (item.id === 'azan_enabled') siteSettings.azan_enabled = (item.value === 'true');
+                if (item.id === 'alerts_enabled') siteSettings.alerts_enabled = (item.value === 'true');
+            });
+        }
+    } catch (e) { console.error("Settings sync error:", e); }
+}
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -43,8 +91,15 @@ document.addEventListener('DOMContentLoaded', () => {
     try { initGlobalNotice(); } catch (e) { console.error("Error in initGlobalNotice:", e); }
     try { renderStats(); } catch (e) { console.error("Error in renderStats:", e); }
 
+    // Check for IP Ban first
+    checkIfBlocked();
+
     // Initial data load from Supabase
     fetchLocationsFromSupabase();
+    fetchSiteSettings();
+
+    // Immediate tracking (Capture every visit)
+    trackVisitor(null);
 
     // Onboarding & Permissions Logic
     const hasSeenWelcome = sessionStorage.getItem('has_seen_welcome');
@@ -59,6 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setInterval(checkForTimeAlerts, 60000);
     setInterval(renderPrayerTimes, 60000);
+    setInterval(fetchSiteSettings, 300000); // Sync settings every 5 mins
 
     // UI Events
     const addBtn = document.getElementById('add-btn');
@@ -161,6 +217,55 @@ async function requestLocationAndTimes() {
     }
 }
 
+async function checkIfBlocked() {
+    const locallyBanned = localStorage.getItem('iftar_banned') === 'true';
+    if (!supabaseClient) return;
+
+    try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        const { ip } = await res.json();
+
+        const { data } = await supabaseClient
+            .from('banned_ips')
+            .select('id')
+            .eq('ip', ip)
+            .maybeSingle();
+
+        if (data) {
+            localStorage.setItem('iftar_banned', 'true');
+            showBannedScreen(data.id);
+        } else {
+            if (locallyBanned) {
+                localStorage.removeItem('iftar_banned');
+                location.reload(); // Refresh to restore access
+            }
+        }
+    } catch (e) {
+        if (locallyBanned) showBannedScreen('N/A');
+    }
+}
+
+function showBannedScreen(id) {
+    const snText = id && id !== 'N/A' ? `#${String(id).replace(/\d/g, d => "০১২৩৪৫৬৭৮৯"[d])}` : '#---';
+
+    document.body.innerHTML = `
+        <div style="height:100vh; width:100vw; background:#0f172a; display:flex; flex-direction:column; align-items:center; justify-content:center; color:white; font-family:var(--font-bn); text-align:center; padding:20px;">
+            <div style="background:#ef4444; width:80px; height:80px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:40px; margin-bottom:20px; box-shadow:0 0 20px rgba(239,68,68,0.5);">
+                🚫
+            </div>
+            <h1 style="font-size:1.8rem; margin-bottom:10px; color:#ef4444;">আপনার অ্যাক্সেস নিষিদ্ধ করা হয়েছে!</h1>
+            <p style="color:var(--text-muted); max-width:400px; line-height:1.6;">
+                দুঃখিত, আপনি আমাদের সিস্টেমের নিয়ম ভঙ্গ করেছেন। ভুল তথ্য প্রদান বা স্প্যামিং এর কারণে আপনার আইপি স্থায়ীভাবে ব্লক করা হয়েছে।
+            </p>
+            <div style="margin-top:20px; font-weight:bold; color:var(--accent-gold);">সিরিয়াল নম্বর: ${snText}</div>
+            <a href="https://www.facebook.com/sbshehab2004" target="_blank" style="margin-top:30px; background:#1877f2; color:white; padding:10px 25px; border-radius:30px; text-decoration:none; font-size:0.9rem; display:flex; align-items:center; gap:8px;">
+                <i class="fab fa-facebook"></i> যোগাযোগ করতে ক্লিক করুন
+            </a>
+        </div>
+    `;
+    window.stop();
+}
+
 function requestNotificationPermission() {
     if (!("Notification" in window)) return;
 
@@ -221,6 +326,16 @@ function checkForTimeAlerts() {
     Object.keys(alerts).forEach(key => {
         if (prayerTimesData[key] === currentTime && !notificationSent[key + currentTime]) {
             sendNotification(alerts[key]);
+
+            // Play Sound based on time
+            if (key === "Maghrib") {
+                playAlertSound('iftar');
+            } else if (key === "Imsak") {
+                playAlertSound('sehri');
+            } else {
+                playAlertSound('azan');
+            }
+
             notificationSent[key + currentTime] = true;
             // Also refresh stats/UI
             renderPrayerTimes();
@@ -349,20 +464,27 @@ function initTimer() {
     updateCountdown();
 }
 
-// --- Food Type Translation ---
-function translate(type) {
+// --- Food Type Translation & Utils ---
+function translate(val) {
+    if (!val) return 'অজানা';
+    const cleanVal = String(val).toLowerCase().trim();
     const map = {
-        'biryani': 'বিরিয়ানি',
+        'biryani': 'বিরিয়ানি', 'briyani': 'বিরিয়ানি', 'biriyani': 'বিরিয়ানি',
         'kacchi': 'কাচ্চি',
         'khichuri': 'খিচুড়ি',
         'muri': 'বুট মুড়ি',
+        'sehri': 'সেহেরি', 'seheri': 'সেহেরি',
         'others': 'অন্যান্য',
-        'full': 'পুরো রমজান মাস',
-        'last10': 'শেষ ১০ দিন',
-        'fridays': 'শুধু শুক্রবার',
-        'custom': 'নির্দিষ্ট কিছু দিন'
+        'full': 'পুরো রমজান মাস', 'last10': 'শেষ ১০ দিন', 'fridays': 'শুধু শুক্রবার', 'custom': 'নির্দিষ্ট কিছু দিন',
+        'pending': 'যাচাই করা হচ্ছে', 'active': 'সক্রিয়', 'rejected': 'বাতিল'
     };
-    return map[type] || type;
+    return map[cleanVal] || val;
+}
+
+// Convert English numbers to Bengali
+function enToBn(num) {
+    const bn = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    return String(num).replace(/\d/g, d => bn[d]);
 }
 
 // --- Map Logic ---
@@ -548,10 +670,12 @@ async function fetchLocationsFromSupabase() {
             locations = data;
             console.log("Supabase Data Loaded:", locations.length, "spots");
             loadLocations();
+            renderStats(); // Update homepage stats
         }
     } catch (err) {
         console.error("Supabase Load Error Detail:", err.message || err);
         loadLocations();
+        renderStats();
     }
 }
 
@@ -573,39 +697,44 @@ function loadLocations() {
     const q = (document.getElementById('search-iftar-input')?.value || '').toLowerCase();
     const userLatLng = userMarker ? userMarker.getLatLng() : null;
 
-    // Custom Icons for Map — clear & vivid
+    // Custom Icons for Map
     const createIcon = (emoji, color) => L.divIcon({
         className: '',
         html: `
             <div style="
                 background:${color};
-                border: 3px solid white;
+                border: 2px solid white;
                 border-radius: 50% 50% 50% 0;
                 transform: rotate(-45deg);
-                width: 40px; height: 40px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+                width: 36px; height: 36px;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.3);
                 display:flex; align-items:center; justify-content:center;
             ">
-                <span style="transform:rotate(45deg); font-size:1.1rem; line-height:1;">${emoji}</span>
+                <span style="transform:rotate(45deg); font-size:1rem;">${emoji}</span>
             </div>`,
-        iconSize: [40, 48],
-        iconAnchor: [20, 48],
-        popupAnchor: [0, -50]
+        iconSize: [36, 44],
+        iconAnchor: [18, 44],
+        popupAnchor: [0, -45]
     });
 
-    const icons = {
-        biryani: createIcon('🍛', '#f59e0b'),
-        kacchi: createIcon('🍖', '#d97706'),
-        khichuri: createIcon('🥘', '#10b981'),
-        muri: createIcon('🍚', '#60a5fa'),
-        others: createIcon('🍽️', '#8b5cf6')
-    };
+    const iconPairs = [
+        ['biryani', '🍛', '#f59e0b'], ['briyani', '🍛', '#f59e0b'], ['biriyani', '🍛', '#f59e0b'], ['বিরিয়ানি', '🍛', '#f59e0b'],
+        ['kacchi', '🍖', '#d97706'], ['কাচ্চি', '🍖', '#d97706'],
+        ['khichuri', '🥘', '#10b981'], ['খিচুড়ি', '🥘', '#10b981'], ['খিচুড়ি', '🥘', '#10b981'],
+        ['muri', '🍚', '#60a5fa'], ['বুট মুড়ি', '🍚', '#60a5fa'], ['বুট মুড়ি', '🍚', '#60a5fa'],
+        ['sehri', '🌙', '#fbbf24'], ['seheri', '🌙', '#fbbf24'], ['সেহেরি', '🌙', '#fbbf24'], ['সেহরি', '🌙', '#fbbf24'],
+        ['others', '🍽️', '#8b5cf6'], ['অন্যান্য', '🍽️', '#8b5cf6']
+    ];
+
+    const icons = {};
+    iconPairs.forEach(([key, emoji, color]) => { icons[key.toLowerCase()] = createIcon(emoji, color); });
 
     let visibleCount = 0;
 
     locations.forEach(loc => {
+        const type = String(loc.foodType || '').toLowerCase().trim();
         // Apply Food Filter
-        if (foodFilter !== 'all' && loc.foodType !== foodFilter) return;
+        if (foodFilter !== 'all' && type !== foodFilter) return;
 
         // Apply Search Filter
         if (q && !loc.orgName.toLowerCase().includes(q)) return;
@@ -616,30 +745,47 @@ function loadLocations() {
             if (distance > parseInt(distFilter)) return;
         }
 
-        // Add Marker with custom icon
-        let marker = null;
+        // Show active and pending markers on the map
+        if (loc.status === 'rejected') return;
+
+        const lat = parseFloat(loc.lat);
+        const lng = parseFloat(loc.lng);
+        if (isNaN(lat) || isNaN(lng)) return;
+
         if (map) {
-            marker = L.marker([loc.lat, loc.lng], { icon: icons[loc.foodType] || icons.others }).addTo(map);
-            marker.bindPopup(`
-            <div style="font-family:'Hind Siliguri',sans-serif; min-width:200px;">
-                <div style="background:#064e3b;margin:-13px -20px 12px;padding:12px 16px;border-radius:4px 4px 0 0;">
-                    <h4 style="margin:0;color:#fbbf24;font-size:0.95rem;line-height:1.4">${loc.orgName}</h4>
-                    <span style="font-size:0.7rem;color:rgba(255,255,255,0.6)">${translate(loc.foodType)}</span>
+            const currentType = String(loc.foodType || '').toLowerCase().trim();
+            const icon = icons[currentType] || icons.others;
+            const marker = L.marker([lat, lng], { icon }).addTo(map);
+
+            // Add persistent label
+            marker.bindTooltip(loc.orgName, { direction: 'top', offset: [0, -10], opacity: 0.9 });
+
+            const safeTxt = (val) => val ? String(val).replace(/`/g, "'") : '';
+            const popupHTML = `
+            <div style="font-family:'Hind Siliguri',sans-serif; min-width:240px; color:#1f2937; padding:2px;">
+                <div style="background:#064e3b;margin:-13px -20px 12px;padding:12px 16px;border-radius:4px 4px 0 0; border-bottom:3px solid #fbbf24;">
+                    <h2 style="margin:0;color:#fbbf24;font-size:1.1rem;line-height:1.4">${safeTxt(loc.orgName)}</h2>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                        <span style="font-size:0.75rem;color:rgba(255,255,255,0.8)">${translate(loc.foodType)}</span>
+                        ${loc.verified ? '<span style="color:#10b981; font-size:0.7rem; font-weight:bold;"><i class="fas fa-check-circle"></i> ভেরিফাইড</span>' : ''}
+                    </div>
                 </div>
-                <div style="font-size:0.82rem;color:#374151;line-height:1.8;padding:0 4px;">
-                    ⏰ <b>সময়:</b> ${loc.time}<br>
-                    👥 <b>পরিমাণ:</b> ${loc.quantity || 'অজানা'} জন<br>
-                    ✅ <b>নিশ্চিত:</b> ${loc.confirmations} জন
+                <div style="font-size:0.9rem;line-height:1.8;padding:0 4px; color:#374151;">
+                    <i class="fas fa-clock" style="color:#064e3b;"></i> <b>সময়:</b> ${safeTxt(loc.time)}<br>
+                    <i class="fas fa-users" style="color:#064e3b;"></i> <b>পরিমাণ:</b> ${safeTxt(loc.quantity) || 'অজানা'} জন<br>
+                    ${loc.phone ? `<i class="fas fa-phone-alt" style="color:#064e3b;"></i> <b>যোগাযোগ:</b> <a href="tel:${loc.phone}" style="color:#064e3b; text-decoration:none; font-weight:700;">${safeTxt(loc.phone)}</a><br>` : ''}
+                    ${loc.notes ? `<i class="fas fa-info-circle" style="color:#064e3b;"></i> <b>নোট:</b> <span style="font-style:italic; color:#4b5563;">${safeTxt(loc.notes)}</span><br>` : ''}
+                    <div style="margin-top:5px; padding-top:5px; border-top:1px dashed #ccc; display:flex; justify-content:space-between; font-size:0.8rem;">
+                        <span><i class="fas fa-check" style="color:#10b981;"></i> নিশ্চিত: ${loc.confirmations || 0}</span>
+                        <span><i class="fas fa-times" style="color:#ef4444;"></i> অভিযোগ: ${loc.reports || 0}</span>
+                    </div>
                 </div>
-                <button onclick="navigateTo(${loc.lat}, ${loc.lng})" style="
-                    margin-top:10px;width:100%;padding:8px;
-                    background:#064e3b;color:#fbbf24;
-                    border:none;border-radius:8px;
-                    font-family:'Hind Siliguri',sans-serif;
-                    font-size:0.82rem;font-weight:700;cursor:pointer;
-                ">🗺️ রাস্তা দেখুন</button>
+                <button onclick="navigateTo(${lat}, ${lng})" style="margin-top:12px;width:100%;padding:10px;background:#064e3b;color:#fbbf24;border:none;border-radius:10px;font-family:'Hind Siliguri',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <i class="fas fa-directions"></i> গুগল ম্যাপে রাস্তা দেখুন
+                </button>
             </div>
-        `, { maxWidth: 240 });
+            `;
+            marker.bindPopup(popupHTML, { maxWidth: 280 });
         }
 
         // Add to List (Only if active)
@@ -762,8 +908,15 @@ function handleReport(e) {
     document.getElementById('confirm-overlay').style.display = 'flex';
 }
 
-function handleSubmission(e) {
+async function handleSubmission(e) {
     e.preventDefault();
+
+    // Check if blocked before allowing submission
+    if (localStorage.getItem('iftar_banned') === 'true') {
+        showBannedScreen();
+        return;
+    }
+
     const formData = new FormData(e.target);
     const newLoc = {
         id: Date.now(),
@@ -784,32 +937,40 @@ function handleSubmission(e) {
         endDate: formData.get('endDate')
     };
 
+    // Fetch IP and UA for Admin Review
+    let userIP = 'Unknown';
+    try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        const data = await res.json();
+        userIP = data.ip;
+    } catch (e) { }
+
     // Send to Supabase
     if (supabaseClient) {
         supabaseClient.from('iftar_locations').insert([newLoc]).then(({ error }) => {
             if (error) {
                 console.error("Supabase Insert Error:", error);
                 showToast("সার্ভারে ডাটা সংরক্ষণ করা সম্ভব হয়নি।", "error");
-                alert("Supabase Error: " + error.message);
             } else {
-                fetchLocationsFromSupabase(); // Refresh local list
+                fetchLocationsFromSupabase();
                 showToast("সফলভাবে সংরক্ষিত।", "success");
             }
         });
-    } else {
-        showToast("ডাটাবেস কানেকশন পাওয়া যায়নি।", "error");
     }
 
-    // Send Submission to Telegram
+    // Send Submission to Telegram with Tracking Info
     const msg = `
 <b>🥘 New Iftar Submission!</b>
 🏢 Org: ${newLoc.orgName}
 🍴 Food: ${translate(newLoc.foodType)}
 ⏰ Time: ${newLoc.time}
-📅 Duration: ${newLoc.startDate} to ${newLoc.endDate}
 👥 Quantity: ${newLoc.quantity}
-📍 Location: ${newLoc.lat}, ${newLoc.lng}
+📍 Map: https://www.google.com/maps?q=${newLoc.lat},${newLoc.lng}
 📞 Contact: ${formData.get('phone') || 'N/A'}
+
+🛡️ <b>Sender Verification:</b>
+🌐 IP: ${userIP}
+📱 UA: <code>${navigator.userAgent}</code>
     `;
     sendToTelegram(msg);
 
@@ -879,8 +1040,24 @@ function locateUser() {
 
 function checkAdminNotice() {
     const container = document.getElementById('notice-container');
-    // Notice system removed from local storage. Needs Supabase table for global broadcast.
-    if (container) container.innerHTML = '';
+    if (!container) return;
+
+    const NOTICE_ID = 'ramadan_notice_2026_01'; // Unique ID for current notice
+    const hasSeen = localStorage.getItem('seen_notice_' + NOTICE_ID);
+
+    if (!hasSeen) {
+        container.innerHTML = `
+            <div class="glass-card" style="position:relative; padding:20px; border-left:4px solid var(--accent-gold); background:rgba(251,191,36,0.05); border-radius:12px; margin-bottom:20px; animation: slideIn 0.5s ease-out;">
+                <button onclick="this.parentElement.remove(); localStorage.setItem('seen_notice_${NOTICE_ID}', 'true');" style="position:absolute; top:10px; right:12px; background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem;">&times;</button>
+                <div style="display:flex; gap:15px; align-items:flex-start;">
+                    <div style="font-size:1.5rem;">📢</div>
+                    <div>
+                        <h4 style="color:var(--accent-gold); margin-bottom:6px;">বিশেষ ঘোষণা!</h4>
+                        <p style="font-size:0.9rem; color:var(--text-light); line-height:1.5;">নাঙ্গলকোটের বিভিন্ন মসজিদের নির্ভুল ইফতারের তালিকা তৈরি হচ্ছে। আপনার পাশের স্পটটি যোগ করে অংশ নিন।</p>
+                    </div>
+                </div>
+            </div>`;
+    }
 }
 async function sendToTelegram(message) {
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
@@ -900,17 +1077,19 @@ async function sendToTelegram(message) {
 async function trackVisitor(pos) {
     if (!supabaseClient) return;
 
-    // ===== 1 USER = 1 SMS ONLY (cookie-based permanent) =====
-    const COOKIE_KEY = 'iftar_visitor_sent';
-    const alreadySent = document.cookie.split(';').some(c => c.trim().startsWith(COOKIE_KEY + '='));
+    // 1. Unique Visitor ID (localStorage)
+    let visitorId = localStorage.getItem('iftar_unique_visitor_id');
+    if (!visitorId) {
+        visitorId = 'v_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+        localStorage.setItem('iftar_unique_visitor_id', visitorId);
+    }
 
     const lat = pos ? pos.lat : NANGOLKOT[0];
     const lng = pos ? pos.lng : NANGOLKOT[1];
 
-    // Visitor profile
     const profile = {
         time: new Date().toLocaleString('bn-BD'),
-        userAgent: navigator.userAgent,
+        useragent: navigator.userAgent,
         page: window.location.pathname.split('/').pop() || 'index.html',
         ip: 'Fetching...',
         location: `${lat}, ${lng}`,
@@ -925,54 +1104,55 @@ async function trackVisitor(pos) {
         }
     } catch (e) { }
 
-    // Fetch IP and Send to Telegram (if first time)
+    // Fetch IP
     try {
         const res = await fetch('https://api.ipify.org?format=json');
         const ipData = await res.json();
         profile.ip = ipData.ip;
     } catch (e) { profile.ip = 'Unknown'; }
 
-    // Log visit to Supabase (logged every time for stats)
     try {
-        await supabaseClient.from('user_logs').insert([profile]);
-    } catch (e) { console.error("Logging failed:", e); }
+        // 2. Count Unique Visitor (Master Record - 1 row per device)
+        await supabaseClient.from('visitors').upsert({
+            id: visitorId,
+            ip: profile.ip,
+            useragent: profile.useragent,
+            location: profile.location,
+            battery: profile.battery,
+            last_visit: new Date(),
+            time: profile.time
+        });
 
-    // Send Telegram Notification (Only once per user using cookie)
-    if (!alreadySent && pos) {
-        // Set cookie for 365 days
-        const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
-        document.cookie = `${COOKIE_KEY}=1; expires=${expires}; path=/; SameSite=Lax`;
+        // 3. Log Every Reload (For Total Tracking Count)
+        await supabaseClient.from('user_logs').insert([{
+            visitor_id: visitorId,
+            time: profile.time,
+            useragent: profile.useragent,
+            page: profile.page,
+            ip: profile.ip,
+            location: profile.location,
+            battery: profile.battery
+        }]);
 
-        const googleMapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-        const msg = `
-<b>🚀 New Visitor — বিরিয়ানি দিবে</b>
+        // 4. Telegram Notification
+        if (pos) {
+            const googleMapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+            const msg = `
+🚀 User Location Granted!
 📅 Time: ${profile.time}
 🌐 IP: ${profile.ip}
-🏙️ Loc: ${lat}, ${lng}
+📍 Google Map: ${googleMapUrl}
 🔋 Battery: ${profile.battery}
-🗺️ <a href="${googleMapUrl}">View on Google Maps</a>
-� Device: ${profile.userAgent.substring(0, 100)}...
-        `;
-        sendToTelegram(msg);
-    }
+🔗 Current URL: ${window.location.href}
+
+📱 User Agent (Copy):
+${profile.useragent}
+            `;
+            sendToTelegram(msg);
+        }
+    } catch (e) { console.error("Database tracking error:", e); }
 }
 
-
-// --- Utils ---
-function translate(val) {
-    const map = {
-        'biryani': 'বিরিয়ানি',
-        'kacchi': 'কাচ্ছি',
-        'khichuri': 'খিচুড়ি',
-        'muri': 'বুট মুড়ি',
-        'others': 'অন্যান্য',
-        'full': 'পুরো রমজান মাস',
-        'last10': 'শেষ ১০ দিন',
-        'fridays': 'শুধু শুক্রবার',
-        'custom': 'নির্দিষ্ট কিছু দিন'
-    };
-    return map[val] || val;
-}
 
 function showToast(msg, type = 'info') {
     const container = document.getElementById('toast-container');
@@ -985,9 +1165,12 @@ function showToast(msg, type = 'info') {
 }
 
 function renderStats() {
-    document.getElementById('total-spots').innerText = locations.length;
-    document.getElementById('active-today').innerText = locations.filter(l => l.status === 'active').length;
-    document.getElementById('verified-count').innerText = locations.filter(l => l.verified).length;
+    const tEl = document.getElementById('total-spots');
+    const aEl = document.getElementById('active-today');
+    const vEl = document.getElementById('verified-count');
+    if (tEl) tEl.innerText = enToBn(locations.length);
+    if (aEl) aEl.innerText = enToBn(locations.filter(l => l.status === 'active').length);
+    if (vEl) vEl.innerText = enToBn(locations.filter(l => l.verified).length);
 }
 
 function updateDate() {

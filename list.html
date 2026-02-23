@@ -281,6 +281,12 @@
             border: 1px solid rgba(156, 163, 175, 0.3);
         }
 
+        .food-badge.sehri {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
         .verified-badge {
             padding: 4px 10px;
             border-radius: 20px;
@@ -676,6 +682,7 @@
                     <button class="chip" data-food="kacchi" onclick="setFoodFilter(this)">🍖 কাচ্চি</button>
                     <button class="chip" data-food="khichuri" onclick="setFoodFilter(this)">🥘 খিচুড়ি</button>
                     <button class="chip" data-food="muri" onclick="setFoodFilter(this)">🍚 বুট মুড়ি</button>
+                    <button class="chip" data-food="sehri" onclick="setFoodFilter(this)">🌙 সেহেরি</button>
                     <button class="chip" data-food="others" onclick="setFoodFilter(this)">🍽️ অন্যান্য</button>
                 </div>
             </div>
@@ -738,13 +745,26 @@
             }
         }
 
-        const foodLabels = { biryani: '🍛 বিরিয়ানি', kacchi: '🍖 কাচ্চি', khichuri: '🥘 খিচুড়ি', muri: '🍚 বুট মুড়ি', others: '🍽️ অন্যান্য' };
+        const foodLabels = {
+            biryani: '🍛 বিরিয়ানি',
+            kacchi: '🍖 কাচ্চি',
+            khichuri: '🥘 খিচুড়ি',
+            muri: '🍚 বুট মুড়ি',
+            sehri: '🌙 সেহেরি',
+            others: '🍽️ অন্যান্য'
+        };
+
+        // Helper to convert to Bengali numbers
+        function enToBn(num) {
+            const bn = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+            return String(num).replace(/\d/g, d => bn[d]);
+        }
 
         // --- Render ---
         function renderStats() {
-            document.getElementById('total-count').textContent = locations.length;
-            document.getElementById('active-count').textContent = locations.filter(l => l.status === 'active').length;
-            document.getElementById('verified-count').textContent = locations.filter(l => l.verified).length;
+            document.getElementById('total-count').textContent = enToBn(locations.length);
+            document.getElementById('active-count').textContent = enToBn(locations.filter(l => l.status === 'active').length);
+            document.getElementById('verified-count').textContent = enToBn(locations.filter(l => l.verified).length);
         }
 
         function setFoodFilter(btn) {
